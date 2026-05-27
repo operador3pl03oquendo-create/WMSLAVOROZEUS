@@ -2,96 +2,47 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>WMS Pro - Control Total</title>
+    <title>WMS Pro - Operativo</title>
     <style>
-        body { font-family: sans-serif; background: #f4f7f6; padding: 15px; }
-        .panel { background: #2c3e50; color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
-        .card { background: white; padding: 10px; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; }
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 20px; }
-        .modal-content { background: white; padding: 20px; border-radius: 8px; max-width: 400px; margin: auto; }
-        input { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ccc; box-sizing: border-box; }
+        body { font-family: sans-serif; background: #eef; padding: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+        .card { background: white; padding: 15px; border-radius: 8px; border: 1px solid #aaa; cursor: pointer; }
     </style>
 </head>
 <body>
-
-<div class="panel">
-    <h3>WMS Pro - Operaciones</h3>
-    <input type="text" id="filtro" placeholder="Filtrar..." onkeyup="renderizar()">
-    <button onclick="cargarDatos()">Sincronizar</button>
-</div>
-
-<div id="grid" class="grid"></div>
-
-<div id="modal" class="modal">
-    <div class="modal-content">
-        <h3>Editar Ubicación</h3>
-        <input type="hidden" id="editIdx">
-        <label>Rack:</label><input type="text" id="editRack">
-        <label>Pos:</label><input type="text" id="editPos">
-        <label>Nivel:</label><input type="text" id="editNiv">
-        <label>SKU:</label><input type="text" id="editSku">
-        <label>LPN:</label><input type="text" id="editLpn">
-        <button onclick="guardar()">Guardar y Registrar Alerta</button>
-        <button onclick="document.getElementById('modal').style.display='none'">Cancelar</button>
-    </div>
-</div>
+    <h3>WMS Operaciones</h3>
+    <input type="text" id="filtro" placeholder="Buscar..." onkeyup="renderizar()">
+    <button onclick="cargar()">Sincronizar</button>
+    <div id="grid" class="grid" style="margin-top:20px;"></div>
 
 <script>
-    const WMS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwLD8NjjDL7zaTozORzgb3LEi7wuajvL5HCf6BYCiX01oDL-8DoQZpTbjWTJIDafJdy8g/exec";
+    const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec";
     let inv = [];
 
-    async function cargarDatos() {
-        const r = await fetch(WMS_SCRIPT_URL);
-        inv = await r.json();
-        renderizar();
+    async function cargar() {
+        try {
+            const r = await fetch(URL);
+            inv = await r.json();
+            renderizar();
+        } catch(e) { alert("Error al conectar: " + e); }
     }
 
     function renderizar() {
         const b = document.getElementById('filtro').value.toLowerCase();
         const grid = document.getElementById('grid');
         grid.innerHTML = '';
+        // Empezamos en 1 para saltar los encabezados
         for(let i=1; i<inv.length; i++) {
-            if(inv[i].join('').toLowerCase().includes(b)) {
-                grid.innerHTML += `<div class="card" onclick="abrirModal(${i})">
-                    <strong>R${inv[i][0]}-P${inv[i][1]}-N${inv[i][2]}</strong><br>SKU: ${inv[i][3]}<br>LPN: ${inv[i][4]}</div>`;
+            let fila = inv[i];
+            if(fila.join(' ').toLowerCase().includes(b)) {
+                grid.innerHTML += `<div class="card">
+                    <strong>R${fila[0]}-P${fila[1]}-N${fila[2]}</strong><br>
+                    SKU: ${fila[3]}<br>LPN: ${fila[4]}
+                </div>`;
             }
         }
     }
-
-    function abrirModal(i) {
-        document.getElementById('editIdx').value = i;
-        document.getElementById('editRack').value = inv[i][0];
-        document.getElementById('editPos').value = inv[i][1];
-        document.getElementById('editNiv').value = inv[i][2];
-        document.getElementById('editSku').value = inv[i][3];
-        document.getElementById('editLpn').value = inv[i][4];
-        document.getElementById('modal').style.display = 'block';
-    }
-
-    async function guardar() {
-        let i = document.getElementById('editIdx').value;
-        let oldUbi = `R${inv[i][0]}-P${inv[i][1]}-N${inv[i][2]}`;
-        let newUbi = `R${document.getElementById('editRack').value}-P${document.getElementById('editPos').value}-N${document.getElementById('editNiv').value}`;
-        
-        let payload = {
-            datos: inv,
-            movimiento: {
-                ubicacionAnterior: oldUbi, ubicacionNueva: newUbi,
-                oldSku: inv[i][3], newSku: document.getElementById('editSku').value,
-                oldLpn: inv[i][4], newLpn: document.getElementById('editLpn').value
-            }
-        };
-        // Actualizar local
-        inv[i] = [document.getElementById('editRack').value, document.getElementById('editPos').value, document.getElementById('editNiv').value, document.getElementById('editSku').value, document.getElementById('editLpn').value, inv[i][5]];
-        payload.datos = inv;
-
-        await fetch(WMS_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
-        document.getElementById('modal').style.display = 'none';
-        cargarDatos();
-        alert("¡Guardado! Alerta generada en Sheets.");
-    }
-    cargarDatos();
+    cargar();
 </script>
 </body>
 </html>
