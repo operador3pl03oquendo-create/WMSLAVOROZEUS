@@ -1,35 +1,58 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>WMS Centralizado</title>
-    <script src="https://unpkg.com/html5-qrcode"></script>
+    <meta charset="UTF-8"><title>WMS Centralizado</title>
     <style>
         body { font-family: sans-serif; background: #f0f2f5; padding: 10px; }
-        .controls { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
-        .pos { background: white; padding: 10px; border-radius: 8px; border: 1px solid #ddd; }
+        .pos { background: white; padding: 10px; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; }
+        .modal { display:none; position:fixed; top:20%; left:10%; width:80%; background:white; padding:20px; border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,0.3); }
     </style>
 </head>
 <body>
-    <div class="controls">
-        <button onclick="cargarDatos()">🔄 Sincronizar desde Google</button>
+    <button onclick="cargarDatos()">🔄 Sincronizar</button>
+    <div id="grid" class="grid" style="margin-top:20px;"></div>
+
+    <div id="modal" class="modal">
+        <input type="hidden" id="editIndex">
+        SKU: <input type="text" id="editSKU"><br>
+        LPN: <input type="text" id="editLPN"><br>
+        <button onclick="guardarCambios()">Guardar en la Nube</button>
     </div>
-    <div id="grid" class="grid"></div>
 
     <script>
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwVHzGceuCsqJ-R8hAbO1fjaKyNyWgIA6p4zU7GhPjHjNJUuw_-3cunChykown5HP16Tg/exec";
         let data = [];
-        
+
         async function cargarDatos() {
             const resp = await fetch(SCRIPT_URL);
             data = await resp.json();
             const grid = document.getElementById('grid');
             grid.innerHTML = '';
             for(let i=1; i<data.length; i++) {
-                grid.innerHTML += `<div class="pos"><strong>R${data[i][0]}-P${data[i][1]}-N${data[i][2]}</strong><br>SKU: ${data[i][3]}<br>LPN: ${data[i][4]}</div>`;
+                grid.innerHTML += `<div class="pos" onclick="abrirEdicion(${i})">
+                    <strong>R${data[i][0]}-P${data[i][1]}-N${data[i][2]}</strong><br>
+                    SKU: ${data[i][3]}<br>LPN: ${data[i][4]}</div>`;
             }
         }
+
+        function abrirEdicion(i) {
+            document.getElementById('editIndex').value = i;
+            document.getElementById('editSKU').value = data[i][3];
+            document.getElementById('editLPN').value = data[i][4];
+            document.getElementById('modal').style.display = 'block';
+        }
+
+        async function guardarCambios() {
+            let i = document.getElementById('editIndex').value;
+            data[i][3] = document.getElementById('editSKU').value;
+            data[i][4] = document.getElementById('editLPN').value;
+            
+            await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(data) });
+            document.getElementById('modal').style.display = 'none';
+            cargarDatos();
+        }
+        cargarDatos();
     </script>
 </body>
 </html>
