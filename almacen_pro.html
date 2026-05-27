@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WMS Profesional Maestro</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        :root { --primary: #007bff; --success: #28a745; --info: #17a2b8; --bg: #f0f2f5; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); padding: 10px; }
+        .container { max-width: 1200px; margin: auto; }
+        .controls { background: white; padding: 20px; border-radius: 16px; display: grid; gap: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        input, button, select { padding: 14px; border-radius: 10px; border: 1px solid #ccc; width: 100%; font-size: 14px; }
+        
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
+        .pos { background: white; padding: 15px; border-radius: 12px; border: 1px solid #e1e4e8; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s; }
+        .pos:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .pos strong { color: #333; font-size: 1.1em; display: block; margin-bottom: 5px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .pos div { font-size: 0.9em; color: #666; line-height: 1.4; }
+
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: white; width: 90%; max-width: 400px; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="controls">
+        <button onclick="iniciarEscaneo()" style="background:#ffc107; font-weight:bold;">📷 Escanear LPN</button>
+        <div id="reader" style="display:none; width: 100%;"></div>
+        <select id="rackSelect" onchange="render()"></select>
+        <select id="posicionSelect" onchange="render()"></select>
+        <input type="text" id="searchInput" placeholder="🔍 Filtrar (SKU/LPN)..." onkeyup="render()">
+        
+        <div class="btn-group">
+            <button onclick="exportarCSV(true)" style="background:var(--success); color:white;">Exportar Filtro (.txt)</button>
+            <button onclick="exportarTodo()" style="background:var(--primary); color:white;">Exportar Todo (.txt)</button>
+        </div>
+        <input type="file" id="importFile" accept=".txt,.csv" onchange="importarCSV(event)" style="display:none;">
+        <button onclick="document.getElementById('importFile').click()" style="background:var(--info); color:white;">📁 Importar Inventario (.txt)</button>
+    </div>
+    <div id="grid" class="grid"></div>
+</div>
+
+<div id="modal" class="modal" onclick="this.style.display='none'">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <h3 id="posTitle">Gestión de Ubicación</h3>
+        SKU: <input type="text" id="inSKU">
+        LPN: <input type="text" id="inLPN">
+        Nivel: <input type="number" id="inNivel">
+        Vencimiento: <input type="date" id="inVenc">
+        <button onclick="guardar()" style="background:var(--primary); color:white; margin-top:10px;">Guardar</button>
+        <button onclick="retirar()" style="background:red; color:white; margin-top:5px;">Quitar Paleta</button>
+    </div>
+</div>
+
+<script>
+    let data = JSON.parse(localStorage.getItem('almacenData')) || {};
+    let currentKey = "";
+    const rs = document.getElementById('rackSelect'), ps = document.getElementById('posicionSelect');
+    
+    for(let i=1; i<=24; i++) rs.add(new Option(`Rack ${i}`, i));
+    for(let i=1; i<=52; i++) ps.add(new Option(`Posición ${i}`, i));
+
+    function importarCSV(event) {
+        const file = event.target.files[0];
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const lines = e.target.result.split(/\r?\n/);
+            data = {}; 
+            for (let i = 1; i < lines.length; i++) {
+                const cols = lines[i].split('\t');
+                if (cols.length >= 6) {
+                    data[`R${cols[0].trim()}-P${cols[1].trim()}-N${cols[2].trim()}`] = { 
+                        sku: cols[3].trim(), lpn: cols[4].trim(), n: cols[2].trim(), venc: cols[5].trim() 
+                    };
+                }
+            }
+            localStorage.setItem('almacenData', JSON.stringify(data));
+            alert("¡Importado correctamente!");
+            render();
+        };
+        reader.readAsText(file);
+    }
+
+    function exportarTodo() {
+        let content = "Rack\tPosicion\tNivel\tSKU\tLPN\tVencimiento\n";
+        for (let r = 1; r <= 24; r++) {
+            for (let p = 1; p <= 52; p++) {
+                for (let n = 1; n <= 8; n++) {
+                    const key = `R${r}-P${p}-N${n}`;
+                    const item = data[key] || { sku: '', lpn: '', n: n, venc: '' };
+                    content += `${r}\t${p}\t${item.n}\t${item.sku || ''}\t${item.lpn || ''}\t${item.venc || ''}\n`;
+                }
+            }
+        }
+        descargarArchivo(content, 'inventario_total.txt');
+    }
+
+    function exportarCSV(soloFiltro) {
+        let content = "Rack\tPosicion\tNivel\tSKU\tLPN\tVencimiento\n";
+        getFilteredData().forEach(i => {
+            content += `${i.r}\t${i.p}\t${i.n}\t${i.sku||''}\t${i.lpn||''}\t${i.venc||''}\n`;
+        });
+        descargarArchivo(content, 'inventario_filtrado.txt');
+    }
+
+    function descargarArchivo(content, filename) {
+        const blob = new Blob(['\ufeff', content], { type: 'text/plain;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        a.click();
+    }
+
+    function render() {
+        const grid = document.getElementById('grid');
+        grid.innerHTML = '';
+        getFilteredData().forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'pos';
+            div.innerHTML = `<strong>${item.key}</strong>
+                <div>SKU: ${item.sku || '---'}</div>
+                <div>LPN: ${item.lpn || '---'}</div>
+                <div style="color: ${item.venc ? '#d9534f' : '#999'}; font-weight: bold;">Vence: ${item.venc || 'Sin fecha'}</div>`;
+            div.onclick = () => abrirModal(item.key, item);
+            grid.appendChild(div);
+        });
+    }
+
+    function getFilteredData() {
+        let res = [];
+        const filter = document.getElementById('searchInput').value.toLowerCase();
+        for(let r=1; r<=24; r++) {
+            for(let p=1; p<=52; p++) {
+                for(let n=1; n<=8; n++) {
+                    let k = `R${r}-P${p}-N${n}`;
+                    let item = {key:k, r, p, n, ...(data[k] || {sku:'', lpn:'', venc:''})};
+                    if(!filter || `${item.sku}${item.lpn}`.toLowerCase().includes(filter)) res.push(item);
+                }
+            }
+        }
+        return res.sort((a,b) => new Date(a.venc) - new Date(b.venc));
+    }
+
+    function abrirModal(key, item) {
+        document.getElementById('posTitle').innerText = "Editar " + key;
+        document.getElementById('inSKU').value = item.sku || "";
+        document.getElementById('inLPN').value = item.lpn || "";
+        document.getElementById('inNivel').value = item.n || "";
+        document.getElementById('inVenc').value = item.venc || "";
+        document.getElementById('modal').style.display = 'flex';
+        currentKey = key;
+    }
+
+    function guardar() {
+        data[currentKey] = { sku: document.getElementById('inSKU').value, lpn: document.getElementById('inLPN').value, n: document.getElementById('inNivel').value, venc: document.getElementById('inVenc').value };
+        localStorage.setItem('almacenData', JSON.stringify(data));
+        document.getElementById('modal').style.display = 'none';
+        render();
+    }
+
+    function retirar() {
+        if(confirm("¿Quitar paleta?")) { delete data[currentKey]; localStorage.setItem('almacenData', JSON.stringify(data)); document.getElementById('modal').style.display = 'none'; render(); }
+    }
+
+    function iniciarEscaneo() {
+        document.getElementById('reader').style.display = 'block';
+        const scanner = new Html5Qrcode("reader");
+        scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
+            scanner.stop();
+            document.getElementById('reader').style.display = 'none';
+            let found = null;
+            for(let k in data) if(data[k].lpn === text) found = {key:k, ...data[k]};
+            if(found) abrirModal(found.key, found);
+            else alert("LPN no encontrado.");
+        });
+    }
+    render();
+</script>
+</body>
+</html>
