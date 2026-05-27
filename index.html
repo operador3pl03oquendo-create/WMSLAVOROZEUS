@@ -2,114 +2,64 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WMS Profesional Centralizado</title>
+    <title>WMS Pro - Operaciones</title>
     <style>
-        :root { --main-bg: #f4f7f6; --dark: #2c3e50; --primary: #3498db; }
-        body { font-family: sans-serif; background: var(--main-bg); padding: 15px; }
-        
-        /* Panel de Control */
-        .wms-op-panel { background: var(--dark); color: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
-        .wms-op-controls { display: flex; gap: 10px; margin-top: 10px; }
-        .wms-search-input { flex-grow: 1; padding: 10px; border-radius: 5px; border: none; }
-        
-        /* Grilla compacta */
-        .wms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
-        .wms-pos-card { background: white; padding: 10px; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; font-size: 13px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .wms-pos-card:hover { background: #f0f7ff; }
-        
-        /* Modal */
-        .wms-modal-ovly { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
-        .wms-modal { background: white; padding: 20px; border-radius: 10px; width: 90%; max-width: 400px; }
-        .wms-input { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
+        .panel { background: #2c3e50; color: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+        .controls { display: flex; gap: 10px; margin-top: 10px; }
+        input { padding: 10px; border-radius: 5px; border: none; flex-grow: 1; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
+        .card { background: white; padding: 15px; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
 
-<div class="wms-op-panel">
+<div class="panel">
     <h3>WMS Pro - Operaciones</h3>
-    <div class="wms-op-controls">
-        <input type="text" id="wms-search" class="wms-search-input" placeholder="Filtrar SKU o LPN..." onkeyup="wmsRenderGrid()">
-        <button onclick="wmsSyncData()">🔄</button>
-        <button onclick="wmsExportToExcel()">📥</button>
+    <div class="controls">
+        <button onclick="cargarDatos()">Sincronizar</button>
+        <input type="text" id="filtro" placeholder="Filtrar por SKU, LPN o Ubicación..." onkeyup="renderizar()">
     </div>
 </div>
 
-<div id="wms-grid" class="wms-grid"></div>
-
-<div id="wms-modal" class="wms-modal-ovly">
-    <div class="wms-modal">
-        <h3>Editar Ubicación</h3>
-        <input type="hidden" id="wms-edit-idx">
-        <label>SKU:</label> <input type="text" id="wms-edit-sku" class="wms-input">
-        <label>LPN:</label> <input type="text" id="wms-edit-lpn" class="wms-input">
-        <label>Vencimiento:</label> <input type="date" id="wms-edit-venc" class="wms-input">
-        <button onclick="wmsSaveChanges()" style="background:var(--primary); color:white; width:100%; padding:10px;">Guardar</button>
-        <button onclick="wmsCloseModal()" style="width:100%; padding:10px; margin-top:5px;">Cancelar</button>
-    </div>
-</div>
+<div id="grid" class="grid"></div>
 
 <script>
-    const WMS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwVHzGceuCsqJ-R8hAbO1fjaKyNyWgIA6p4zU7GhPjHjNJUuw_-3cunChykown5HP16Tg/exec"; //
-    let wmsInventoryData = [];
+    const SCRIPT_URL = "TU_URL_AQUÍ"; // RECUERDA MANTENER TU URL
+    let inventario = [];
 
-    async function wmsSyncData() {
-        const resp = await fetch(WMS_SCRIPT_URL);
-        wmsInventoryData = await resp.json();
-        wmsRenderGrid();
+    async function cargarDatos() {
+        const resp = await fetch(SCRIPT_URL);
+        inventario = await resp.json();
+        renderizar();
     }
 
-    function formatearFecha(fechaStr) {
-        if (!fechaStr) return "";
-        return fechaStr.split('T')[0]; // Toma solo la parte de la fecha
-    }
-
-    function wmsRenderGrid() {
-        const busqueda = document.getElementById('wms-search').value.toLowerCase();
-        const grid = document.getElementById('wms-grid');
+    function renderizar() {
+        const busqueda = document.getElementById('filtro').value.toLowerCase();
+        const grid = document.getElementById('grid');
         grid.innerHTML = '';
         
-        for(let i=1; i<wmsInventoryData.length; i++) {
-            const [rack, pos, niv, sku, lpn, venc] = wmsInventoryData[i];
-            if(`${sku}${lpn}`.toLowerCase().includes(busqueda)) {
-                grid.innerHTML += `<div class="wms-pos-card" onclick="wmsOpenEditModal(${i})">
-                    <strong>R${rack}-P${pos}-N${niv}</strong><br>
-                    SKU: ${sku}<br>LPN: ${lpn}<br>
-                    <small>Venc: ${formatearFecha(venc)}</small>
-                </div>`;
+        // Saltamos el encabezado (i=1)
+        for(let i=1; i<inventario.length; i++) {
+            const [rack, pos, niv, sku, lpn, venc] = inventario[i];
+            const texto = `${rack}${pos}${niv}${sku}${lpn}`.toLowerCase();
+            
+            if(texto.includes(busqueda)) {
+                // Formateo de fecha: corta la hora si existe
+                const fechaLimpia = venc ? venc.split('T')[0] : "";
+                
+                grid.innerHTML += `
+                    <div class="card" onclick="editar(${i})">
+                        <strong>Rack: ${rack} | Pos: ${pos} | Niv: ${niv}</strong><br>
+                        SKU: ${sku} | LPN: ${lpn}<br>
+                        <small>Venc: ${fechaLimpia}</small>
+                    </div>`;
             }
         }
     }
-
-    function wmsOpenEditModal(i) {
-        document.getElementById('wms-edit-idx').value = i;
-        document.getElementById('wms-edit-sku').value = wmsInventoryData[i][3];
-        document.getElementById('wms-edit-lpn').value = wmsInventoryData[i][4];
-        document.getElementById('wms-edit-venc').value = formatearFecha(wmsInventoryData[i][5]);
-        document.getElementById('wms-modal').style.display = 'flex';
-    }
-
-    async function wmsSaveChanges() {
-        let i = document.getElementById('wms-edit-idx').value;
-        wmsInventoryData[i][3] = document.getElementById('wms-edit-sku').value;
-        wmsInventoryData[i][4] = document.getElementById('wms-edit-lpn').value;
-        wmsInventoryData[i][5] = document.getElementById('wms-edit-venc').value;
-        await fetch(WMS_SCRIPT_URL, { method: 'POST', body: JSON.stringify(wmsInventoryData) });
-        wmsCloseModal();
-        wmsSyncData();
-    }
-
-    function wmsCloseModal() { document.getElementById('wms-modal').style.display = 'none'; }
     
-    function wmsExportToExcel() {
-        let csv = "data:text/csv;charset=utf-8," + wmsInventoryData.map(e => e.join(",")).join("\n");
-        let link = document.createElement("a");
-        link.setAttribute("href", encodeURI(csv));
-        link.setAttribute("download", "Inventario.csv");
-        link.click();
-    }
-    
-    wmsSyncData();
+    // Aquí iría tu función editar() para el modal
+    cargarDatos();
 </script>
 </body>
 </html>
