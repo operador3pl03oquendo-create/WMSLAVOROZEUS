@@ -2,43 +2,95 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WMS Profesional</title>
+    <title>WMS Profesional Centralizado</title>
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; padding: 15px; }
-        .controls { background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        button { width: 100%; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: none; font-size: 16px; cursor: pointer; }
-        .btn-sync { background: #2c3e50; color: white; }
-        .btn-scan { background: #f39c12; color: white; }
-        input { width: 100%; padding: 12px; box-sizing: border-box; border-radius: 8px; border: 1px solid #ccc; margin-bottom: 10px; }
-        .card { background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 5px solid #2c3e50; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        body { font-family: sans-serif; background: #f4f7f6; padding: 10px; }
+        .controls { background: #2c3e50; color: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; }
+        .card { background: white; padding: 15px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid #3498db; }
+        input, button { padding: 10px; margin: 5px; border-radius: 5px; border: none; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 20px; }
+        .modal-content { background: white; padding: 20px; border-radius: 8px; max-width: 400px; margin: auto; }
     </style>
 </head>
 <body>
 
 <div class="controls">
-    <button class="btn-sync" onclick="cargarDatos()">🔄 Sincronizar Datos</button>
-    <input type="text" id="filtro" placeholder="🔍 Filtrar...">
-    <button class="btn-scan">📷 Escanear LPN</button>
+    <h3>WMS Pro - Operaciones</h3>
+    <button onclick="cargarDatos()">🔄 Sincronizar</button>
+    <button onclick="exportarCSV()">📥 Exportar Filtro</button>
+    <input type="text" id="filtro" placeholder="Filtrar SKU o LPN..." onkeyup="render()">
 </div>
 
 <div id="lista"></div>
 
+<div id="modal" class="modal">
+    <div class="modal-content">
+        <h3>Editar Ubicación</h3>
+        <input type="hidden" id="editIdx">
+        <input type="text" id="editRack" placeholder="Rack">
+        <input type="text" id="editPos" placeholder="Posición">
+        <input type="text" id="editNivel" placeholder="Nivel">
+        <input type="text" id="editSKU" placeholder="SKU">
+        <input type="text" id="editLPN" placeholder="LPN">
+        <input type="date" id="editVenc">
+        <button onclick="guardarCambios()" style="background:#27ae60; color:white;">Guardar</button>
+        <button onclick="document.getElementById('modal').style.display='none'">Cancelar</button>
+    </div>
+</div>
+
 <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwVHzGceuCsqJ-R8hAbO1fjaKyNyWgIA6p4zU7GhPjHjNJUuw_-3cunChykown5HP16Tg/exec";
-    
+    let data = [];
+
     async function cargarDatos() {
         const resp = await fetch(SCRIPT_URL);
-        const data = await resp.json();
+        data = await resp.json();
+        render();
+    }
+
+    function render() {
+        const busqueda = document.getElementById('filtro').value.toLowerCase();
         const lista = document.getElementById('lista');
         lista.innerHTML = '';
         for(let i=1; i<data.length; i++) {
-            lista.innerHTML += `<div class="card">
-                <strong>R${data[i][0]}-P${data[i][1]}-N${data[i][2]}</strong><br>
-                SKU: ${data[i][3]} <br> LPN: ${data[i][4]}
-            </div>`;
+            if(data[i].join('').toLowerCase().includes(busqueda)) {
+                lista.innerHTML += `<div class="card" onclick="abrirModal(${i})">
+                    <strong>Rack: ${data[i][0]} | Pos: ${data[i][1]} | Niv: ${data[i][2]}</strong><br>
+                    SKU: ${data[i][3]} | LPN: ${data[i][4]} | Venc: ${data[i][5]}
+                </div>`;
+            }
         }
     }
+
+    function abrirModal(i) {
+        document.getElementById('editIdx').value = i;
+        document.getElementById('editRack').value = data[i][0];
+        document.getElementById('editPos').value = data[i][1];
+        document.getElementById('editNivel').value = data[i][2];
+        document.getElementById('editSKU').value = data[i][3];
+        document.getElementById('editLPN').value = data[i][4];
+        document.getElementById('editVenc').value = data[i][5];
+        document.getElementById('modal').style.display = 'block';
+    }
+
+    async function guardarCambios() {
+        let i = document.getElementById('editIdx').value;
+        data[i] = [document.getElementById('editRack').value, document.getElementById('editPos').value, 
+                   document.getElementById('editNivel').value, document.getElementById('editSKU').value, 
+                   document.getElementById('editLPN').value, document.getElementById('editVenc').value];
+        await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(data) });
+        document.getElementById('modal').style.display = 'none';
+        render();
+    }
+
+    function exportarCSV() {
+        let csv = "data:text/csv;charset=utf-8," + data.map(e => e.join(",")).join("\n");
+        let link = document.createElement("a");
+        link.setAttribute("href", encodeURI(csv));
+        link.setAttribute("download", "Inventario.csv");
+        link.click();
+    }
+    
     cargarDatos();
 </script>
 </body>
