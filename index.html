@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WMS Pro</title>
+    <title>WMS Pro - Operativo</title>
     <style>
         body { font-family: sans-serif; background: #f4f7f6; padding: 10px; }
         .panel { background: #2c3e50; color: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
         .card { background: white; padding: 12px; border-radius: 8px; border: 1px solid #ccc; cursor: pointer; }
-        /* Modal estilizado para móviles */
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; padding: 20px; }
         .modal-content { background: white; padding: 20px; border-radius: 10px; max-width: 400px; margin: auto; }
         input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
@@ -21,7 +20,7 @@
 <div class="panel">
     <h3>WMS Pro</h3>
     <input type="text" id="filtro" placeholder="Filtrar SKU..." onkeyup="render()">
-    <button onclick="sync()">Sincronizar Datos</button>
+    <button onclick="sync()">Sincronizar</button>
 </div>
 
 <div id="grid" class="grid"></div>
@@ -72,16 +71,18 @@
     }
     async function save() {
         let i = document.getElementById('idx').value;
-        let ubiA = `R${data[i][0]}-P${data[i][1]}-N${data[i][2]}`;
+        let ubiAnt = `P${data[i][1]}-N${data[i][2]}`;
+        
         data[i] = [document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, document.getElementById('eS').value, document.getElementById('eL').value, data[i][5]];
-        let ubiN = `R${data[i][0]}-P${data[i][1]}-N${data[i][2]}`;
+        let ubiNue = `P${data[i][1]}-N${data[i][2]}`;
         
         await fetch(URL, { method:'POST', body: JSON.stringify({
             datos: data,
-            movimiento: { ubiAnt: ubiA, ubiNue: ubiN, skuAnt: data[i][3], skuNue: data[i][3], lpnAnt: data[i][4], lpnNue: data[i][4] }
+            movimiento: { rack: data[i][0], ubiAnt: ubiAnt, ubiNue: ubiNue, sku: data[i][3], lpn: data[i][4] }
         })});
         document.getElementById('modal').style.display = 'none';
         sync();
+        alert("Cambio registrado correctamente.");
     }
     sync();
 </script>
