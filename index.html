@@ -40,7 +40,7 @@
 </div>
 
 <script>
-    const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec";
+    const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; 
     let data = [];
 
     async function sync() {
@@ -48,6 +48,7 @@
         data = await r.json();
         render();
     }
+    
     function render() {
         const b = document.getElementById('filtro').value.toLowerCase();
         const g = document.getElementById('grid');
@@ -60,6 +61,7 @@
             }
         }
     }
+    
     function edit(i) {
         document.getElementById('idx').value = i;
         document.getElementById('eR').value = data[i][0];
@@ -69,21 +71,32 @@
         document.getElementById('eL').value = data[i][4];
         document.getElementById('modal').style.display = 'block';
     }
+    
     async function save() {
-        let i = document.getElementById('idx').value;
+        let i = parseInt(document.getElementById('idx').value);
         let ubiAnt = `P${data[i][1]}-N${data[i][2]}`;
         
-        // Actualizar array
-        data[i] = [document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, document.getElementById('eS').value, document.getElementById('eL').value, data[i][5]];
+        // Capturamos los valores directamente del formulario
+        let nuevoRack = document.getElementById('eR').value;
+        let nuevoSku = document.getElementById('eS').value;
+        let nuevoLpn = document.getElementById('eL').value;
+        
+        // Actualizar array local
+        data[i] = [nuevoRack, document.getElementById('eP').value, document.getElementById('eN').value, nuevoSku, nuevoLpn, data[i][5]];
         let ubiNue = `P${data[i][1]}-N${data[i][2]}`;
         
-        await fetch(URL, { method:'POST', body: JSON.stringify({
-            datos: data,
-            movimiento: { rack: data[i][0], ubiAnt: ubiAnt, ubiNue: ubiNue, sku: data[i][3], lpn: data[i][4] }
-        })});
+        // Enviar al servidor
+        await fetch(URL, { 
+            method:'POST', 
+            body: JSON.stringify({
+                datos: data,
+                movimiento: { rack: nuevoRack, ubiAnt: ubiAnt, ubiNue: ubiNue, sku: nuevoSku, lpn: nuevoLpn }
+            })
+        });
+        
         document.getElementById('modal').style.display = 'none';
         sync();
-        alert("¡Guardado! Historial actualizado.");
+        alert("¡Guardado correctamente!");
     }
     sync();
 </script>
