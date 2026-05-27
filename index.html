@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WMS Pro</title>
+    <title>WMS Pro - Operativo</title>
     <style>
         body { font-family: sans-serif; background: #f4f7f6; padding: 10px; }
         .panel { background: #2c3e50; color: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; }
@@ -27,7 +27,7 @@
 
 <div id="modal" class="modal">
     <div class="modal-content">
-        <h3>Editar</h3>
+        <h3>Editar Ubicación</h3>
         <input type="hidden" id="idx">
         Rack:<input type="number" id="eR">
         Pos:<input type="number" id="eP">
@@ -48,7 +48,6 @@
         data = await r.json();
         render();
     }
-    
     function render() {
         const b = document.getElementById('filtro').value.toLowerCase();
         const g = document.getElementById('grid');
@@ -61,7 +60,6 @@
             }
         }
     }
-    
     function edit(i) {
         document.getElementById('idx').value = i;
         document.getElementById('eR').value = data[i][0];
@@ -71,32 +69,29 @@
         document.getElementById('eL').value = data[i][4];
         document.getElementById('modal').style.display = 'block';
     }
-    
     async function save() {
         let i = parseInt(document.getElementById('idx').value);
-        let ubiAnt = `P${data[i][1]}-N${data[i][2]}`;
+        let ubiAnt = `R${data[i][0]}-P${data[i][1]}-N${data[i][2]}`;
         
-        // Capturamos los valores directamente del formulario
-        let nuevoRack = document.getElementById('eR').value;
-        let nuevoSku = document.getElementById('eS').value;
-        let nuevoLpn = document.getElementById('eL').value;
+        let nR = document.getElementById('eR').value;
+        let nP = document.getElementById('eP').value;
+        let nN = document.getElementById('eN').value;
+        let nS = document.getElementById('eS').value;
+        let nL = document.getElementById('eL').value;
         
-        // Actualizar array local
-        data[i] = [nuevoRack, document.getElementById('eP').value, document.getElementById('eN').value, nuevoSku, nuevoLpn, data[i][5]];
-        let ubiNue = `P${data[i][1]}-N${data[i][2]}`;
+        data[i] = [nR, nP, nN, nS, nL, data[i][5]];
+        let ubiNue = `R${nR}-P${nP}-N${nN}`;
         
-        // Enviar al servidor
         await fetch(URL, { 
             method:'POST', 
             body: JSON.stringify({
                 datos: data,
-                movimiento: { rack: nuevoRack, ubiAnt: ubiAnt, ubiNue: ubiNue, sku: nuevoSku, lpn: nuevoLpn }
+                movimiento: { rack: nR, ubiAnt: ubiAnt, ubiNue: ubiNue, sku: nS, lpn: nL }
             })
         });
-        
         document.getElementById('modal').style.display = 'none';
         sync();
-        alert("¡Guardado correctamente!");
+        alert("Guardado: " + ubiAnt + " a " + ubiNue);
     }
     sync();
 </script>
