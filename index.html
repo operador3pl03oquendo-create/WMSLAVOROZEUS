@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WMS Pro - Operativo</title>
+    <title>WMS Pro</title>
     <style>
         body { font-family: sans-serif; background: #f4f7f6; padding: 10px; }
         .panel { background: #2c3e50; color: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; }
@@ -27,7 +27,7 @@
 
 <div id="modal" class="modal">
     <div class="modal-content">
-        <h3>Editar Ubicación</h3>
+        <h3>Editar</h3>
         <input type="hidden" id="idx">
         Rack:<input type="number" id="eR">
         Pos:<input type="number" id="eP">
@@ -73,6 +73,7 @@
         let i = document.getElementById('idx').value;
         let ubiAnt = `P${data[i][1]}-N${data[i][2]}`;
         
+        // Actualizar array
         data[i] = [document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, document.getElementById('eS').value, document.getElementById('eL').value, data[i][5]];
         let ubiNue = `P${data[i][1]}-N${data[i][2]}`;
         
@@ -82,7 +83,7 @@
         })});
         document.getElementById('modal').style.display = 'none';
         sync();
-        alert("Cambio registrado correctamente.");
+        alert("¡Guardado! Historial actualizado.");
     }
     sync();
 </script>
