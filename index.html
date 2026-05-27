@@ -2,63 +2,95 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>WMS Pro - Operaciones</title>
+    <title>WMS Pro - Control Total</title>
     <style>
-        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
-        .panel { background: #2c3e50; color: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
-        .controls { display: flex; gap: 10px; margin-top: 10px; }
-        input { padding: 10px; border-radius: 5px; border: none; flex-grow: 1; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
-        .card { background: white; padding: 15px; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        body { font-family: sans-serif; background: #f4f7f6; padding: 15px; }
+        .panel { background: #2c3e50; color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+        .card { background: white; padding: 10px; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 20px; }
+        .modal-content { background: white; padding: 20px; border-radius: 8px; max-width: 400px; margin: auto; }
+        input { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ccc; box-sizing: border-box; }
     </style>
 </head>
 <body>
 
 <div class="panel">
     <h3>WMS Pro - Operaciones</h3>
-    <div class="controls">
-        <button onclick="cargarDatos()">Sincronizar</button>
-        <input type="text" id="filtro" placeholder="Filtrar por SKU, LPN o Ubicación..." onkeyup="renderizar()">
-    </div>
+    <input type="text" id="filtro" placeholder="Filtrar..." onkeyup="renderizar()">
+    <button onclick="cargarDatos()">Sincronizar</button>
 </div>
 
 <div id="grid" class="grid"></div>
 
+<div id="modal" class="modal">
+    <div class="modal-content">
+        <h3>Editar Ubicación</h3>
+        <input type="hidden" id="editIdx">
+        <label>Rack:</label><input type="text" id="editRack">
+        <label>Pos:</label><input type="text" id="editPos">
+        <label>Nivel:</label><input type="text" id="editNiv">
+        <label>SKU:</label><input type="text" id="editSku">
+        <label>LPN:</label><input type="text" id="editLpn">
+        <button onclick="guardar()">Guardar y Registrar Alerta</button>
+        <button onclick="document.getElementById('modal').style.display='none'">Cancelar</button>
+    </div>
+</div>
+
 <script>
-    const SCRIPT_URL = "TU_URL_AQUÍ"; // RECUERDA MANTENER TU URL
-    let inventario = [];
+    const WMS_SCRIPT_URL = "TU_URL_AQUÍ";
+    let inv = [];
 
     async function cargarDatos() {
-        const resp = await fetch(SCRIPT_URL);
-        inventario = await resp.json();
+        const r = await fetch(WMS_SCRIPT_URL);
+        inv = await r.json();
         renderizar();
     }
 
     function renderizar() {
-        const busqueda = document.getElementById('filtro').value.toLowerCase();
+        const b = document.getElementById('filtro').value.toLowerCase();
         const grid = document.getElementById('grid');
         grid.innerHTML = '';
-        
-        // Saltamos el encabezado (i=1)
-        for(let i=1; i<inventario.length; i++) {
-            const [rack, pos, niv, sku, lpn, venc] = inventario[i];
-            const texto = `${rack}${pos}${niv}${sku}${lpn}`.toLowerCase();
-            
-            if(texto.includes(busqueda)) {
-                // Formateo de fecha: corta la hora si existe
-                const fechaLimpia = venc ? venc.split('T')[0] : "";
-                
-                grid.innerHTML += `
-                    <div class="card" onclick="editar(${i})">
-                        <strong>Rack: ${rack} | Pos: ${pos} | Niv: ${niv}</strong><br>
-                        SKU: ${sku} | LPN: ${lpn}<br>
-                        <small>Venc: ${fechaLimpia}</small>
-                    </div>`;
+        for(let i=1; i<inv.length; i++) {
+            if(inv[i].join('').toLowerCase().includes(b)) {
+                grid.innerHTML += `<div class="card" onclick="abrirModal(${i})">
+                    <strong>R${inv[i][0]}-P${inv[i][1]}-N${inv[i][2]}</strong><br>SKU: ${inv[i][3]}<br>LPN: ${inv[i][4]}</div>`;
             }
         }
     }
-    
-    // Aquí iría tu función editar() para el modal
+
+    function abrirModal(i) {
+        document.getElementById('editIdx').value = i;
+        document.getElementById('editRack').value = inv[i][0];
+        document.getElementById('editPos').value = inv[i][1];
+        document.getElementById('editNiv').value = inv[i][2];
+        document.getElementById('editSku').value = inv[i][3];
+        document.getElementById('editLpn').value = inv[i][4];
+        document.getElementById('modal').style.display = 'block';
+    }
+
+    async function guardar() {
+        let i = document.getElementById('editIdx').value;
+        let oldUbi = `R${inv[i][0]}-P${inv[i][1]}-N${inv[i][2]}`;
+        let newUbi = `R${document.getElementById('editRack').value}-P${document.getElementById('editPos').value}-N${document.getElementById('editNiv').value}`;
+        
+        let payload = {
+            datos: inv,
+            movimiento: {
+                ubicacionAnterior: oldUbi, ubicacionNueva: newUbi,
+                oldSku: inv[i][3], newSku: document.getElementById('editSku').value,
+                oldLpn: inv[i][4], newLpn: document.getElementById('editLpn').value
+            }
+        };
+        // Actualizar local
+        inv[i] = [document.getElementById('editRack').value, document.getElementById('editPos').value, document.getElementById('editNiv').value, document.getElementById('editSku').value, document.getElementById('editLpn').value, inv[i][5]];
+        payload.datos = inv;
+
+        await fetch(WMS_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+        document.getElementById('modal').style.display = 'none';
+        cargarDatos();
+        alert("¡Guardado! Alerta generada en Sheets.");
+    }
     cargarDatos();
 </script>
 </body>
