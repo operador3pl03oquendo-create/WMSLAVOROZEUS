@@ -2,96 +2,174 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>WMS Profesional Centralizado</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WMS Centralizado de Operaciones</title>
     <style>
-        body { font-family: sans-serif; background: #f4f7f6; padding: 10px; }
-        .controls { background: #2c3e50; color: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; }
-        .card { background: white; padding: 15px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid #3498db; }
-        input, button { padding: 10px; margin: 5px; border-radius: 5px; border: none; }
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 20px; }
-        .modal-content { background: white; padding: 20px; border-radius: 8px; max-width: 400px; margin: auto; }
+        :root { --main-bg: #f4f7f6; --dark: #2c3e50; --primary: #3498db; --green: #2ecc71; --orange: #e67e22; --border: #ddd; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--main-bg); margin: 0; padding: 15px; }
+        
+        /* Panel de Control de Operaciones */
+        .wms-op-panel { background: var(--dark); color: white; padding: 25px; border-radius: 15px; display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .wms-op-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px; }
+        .wms-op-header h2 { margin: 0; font-weight: 300; }
+        .wms-op-controls { display: flex; gap: 10px; flex-wrap: wrap; }
+        .wms-search-input { flex-grow: 1; padding: 12px; border-radius: 8px; border: none; font-size: 16px; background: rgba(255,255,255,0.1); color: white; outline: none; transition: 0.3s; }
+        .wms-search-input:focus { background: rgba(255,255,255,0.2); }
+        .wms-search-input::placeholder { color: rgba(255,255,255,0.6); }
+
+        /* Estilo para los botones principales */
+        .wms-btn { padding: 12px 20px; border-radius: 8px; border: none; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.3s; }
+        .btn-sync { background: var(--green); color: white; }
+        .btn-sync:hover { background: #27ae60; }
+        .btn-export { background: #555; color: white; }
+        .btn-export:hover { background: #777; }
+        
+        /* Sistema de Grids y Tarjetas Avanzado */
+        .wms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
+        .wms-pos-card { background: white; padding: 20px; border-radius: 12px; border-left: 5px solid var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.05); cursor: pointer; transition: 0.3s; }
+        .wms-pos-card:hover { transform: translateY(-3px); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .pos-title { color: var(--dark); font-size: 18px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+        .pos-empty { border-color: #ddd; color: #aaa; }
+        .pos-empty .pos-title { color: #aaa; }
+        .wms-data-tag { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-top: 5px; }
+        .tag-sku { background: rgba(52, 152, 219, 0.1); color: var(--primary); }
+        .tag-venc { background: rgba(230, 126, 34, 0.1); color: var(--orange); }
+
+        /* Formulario de Edición (Modal) Avanzado */
+        .wms-modal-ovly { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; backdrop-filter: blur(2px); z-index: 1000; }
+        .wms-modal { background: white; padding: 30px; border-radius: 15px; width: 85%; max-width: 450px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); position: relative; }
+        .wms-form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 15px; }
+        .wms-label { font-size: 13px; font-weight: 600; color: #666; }
+        .wms-input { padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; outline: none; }
+        .wms-input:focus { border-color: var(--primary); }
+        .wms-form-actions { display: flex; gap: 10px; margin-top: 20px; }
     </style>
 </head>
 <body>
 
-<div class="controls">
-    <h3>WMS Pro - Operaciones</h3>
-    <button onclick="cargarDatos()">🔄 Sincronizar</button>
-    <button onclick="exportarCSV()">📥 Exportar Filtro</button>
-    <input type="text" id="filtro" placeholder="Filtrar SKU o LPN..." onkeyup="render()">
+<div class="wms-op-panel">
+    <div class="wms-op-header">
+        <h2>WMS Pro - Operaciones Digitales</h2>
+        <span style="opacity:0.7;">Operador3plOquendo</span>
+    </div>
+    <div class="wms-op-controls">
+        <input type="text" id="wms-search" class="wms-search-input" placeholder="🔍 Filtrar por SKU, LPN o Ubicación..." onkeyup="wmsRenderGrid()">
+        <button class="wms-btn btn-sync" onclick="wmsSyncData()"><span class="icon">🔄</span> Sincronizar</button>
+        <button class="wms-btn btn-export" onclick="wmsExportToExcel()"><span class="icon">📥</span> Exportar</button>
+    </div>
 </div>
 
-<div id="lista"></div>
+<div id="wms-grid" class="wms-grid"></div>
 
-<div id="modal" class="modal">
-    <div class="modal-content">
-        <h3>Editar Ubicación</h3>
-        <input type="hidden" id="editIdx">
-        <input type="text" id="editRack" placeholder="Rack">
-        <input type="text" id="editPos" placeholder="Posición">
-        <input type="text" id="editNivel" placeholder="Nivel">
-        <input type="text" id="editSKU" placeholder="SKU">
-        <input type="text" id="editLPN" placeholder="LPN">
-        <input type="date" id="editVenc">
-        <button onclick="guardarCambios()" style="background:#27ae60; color:white;">Guardar</button>
-        <button onclick="document.getElementById('modal').style.display='none'">Cancelar</button>
+<div id="wms-modal" class="wms-modal-ovly">
+    <div class="wms-modal">
+        <h3 style="margin: 0 0 20px; color:var(--dark); font-weight:300;">Gestión de Ubicación</h3>
+        <input type="hidden" id="wms-edit-idx">
+        
+        <div class="wms-form-group">
+            <label class="wms-label">Rack</label>
+            <input type="text" id="wms-edit-rack" class="wms-input">
+        </div>
+        
+        <div class="wms-form-group">
+            <label class="wms-label">SKU</label>
+            <input type="text" id="wms-edit-sku" class="wms-input">
+        </div>
+        
+        <div class="wms-form-group">
+            <label class="wms-label">LPN</label>
+            <input type="text" id="wms-edit-lpn" class="wms-input">
+        </div>
+        
+        <div class="wms-form-group">
+            <label class="wms-label">Fecha de Vencimiento</label>
+            <input type="date" id="wms-edit-venc" class="wms-input">
+        </div>
+
+        <div class="wms-form-actions">
+            <button class="wms-btn btn-sync" onclick="wmsSaveChanges()" style="background:var(--primary);">Guardar en la Nube</button>
+            <button class="wms-btn btn-export" onclick="wmsCloseModal()" style="background:#eee; color:#333;">Cancelar</button>
+        </div>
     </div>
 </div>
 
 <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwVHzGceuCsqJ-R8hAbO1fjaKyNyWgIA6p4zU7GhPjHjNJUuw_-3cunChykown5HP16Tg/exec";
-    let data = [];
+    // Conector Maestro - IMPORTANTE: Pega aquí tu URL
+    const WMS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwVHzGceuCsqJ-R8hAbO1fjaKyNyWgIA6p4zU7GhPjHjNJUuw_-3cunChykown5HP16Tg/exec";
+    let wmsInventoryData = [];
 
-    async function cargarDatos() {
-        const resp = await fetch(SCRIPT_URL);
-        data = await resp.json();
-        render();
+    // Lógica avanzada de sincronización (GET)
+    async function wmsSyncData() {
+        try {
+            const resp = await fetch(WMS_SCRIPT_URL);
+            wmsInventoryData = await resp.json();
+            wmsRenderGrid();
+        } catch (err) {
+            alert("No se pudo conectar a Google Sheets. Verifica tu URL o los permisos.");
+        }
     }
 
-    function render() {
-        const busqueda = document.getElementById('filtro').value.toLowerCase();
-        const lista = document.getElementById('lista');
-        lista.innerHTML = '';
-        for(let i=1; i<data.length; i++) {
-            if(data[i].join('').toLowerCase().includes(busqueda)) {
-                lista.innerHTML += `<div class="card" onclick="abrirModal(${i})">
-                    <strong>Rack: ${data[i][0]} | Pos: ${data[i][1]} | Niv: ${data[i][2]}</strong><br>
-                    SKU: ${data[i][3]} | LPN: ${data[i][4]} | Venc: ${data[i][5]}
+    // Lógica avanzada de visualización
+    function wmsRenderGrid() {
+        const busqueda = document.getElementById('wms-search').value.toLowerCase();
+        const grid = document.getElementById('wms-grid');
+        grid.innerHTML = '';
+        
+        for(let i=1; i<wmsInventoryData.length; i++) {
+            const [rack, pos, niv, sku, lpn, venc] = wmsInventoryData[i];
+            const dataStr = `${rack}-${pos}-${niv}-${sku}-${lpn}`.toLowerCase();
+            
+            if(dataStr.includes(busqueda)) {
+                grid.innerHTML += `<div class="wms-pos-card" onclick="wmsOpenEditModal(${i})">
+                    <div class="pos-title">Ubicación ${rack}</div>
+                    <div class="pos-data" style="margin-top:10px;">
+                        <span class="wms-data-tag tag-sku">SKU: ${sku}</span><br>
+                        <span class="wms-data-tag tag-sku" style="background:#eee; color:#666;">LPN: ${lpn}</span>
+                    </div>
                 </div>`;
             }
         }
     }
 
-    function abrirModal(i) {
-        document.getElementById('editIdx').value = i;
-        document.getElementById('editRack').value = data[i][0];
-        document.getElementById('editPos').value = data[i][1];
-        document.getElementById('editNivel').value = data[i][2];
-        document.getElementById('editSKU').value = data[i][3];
-        document.getElementById('editLPN').value = data[i][4];
-        document.getElementById('editVenc').value = data[i][5];
-        document.getElementById('modal').style.display = 'block';
+    // Lógica avanzada de guardado (POST)
+    async function wmsSaveChanges() {
+        let i = document.getElementById('wms-edit-idx').value;
+        wmsInventoryData[i] = [
+            document.getElementById('wms-edit-rack').value,
+            wmsInventoryData[i][1], // Posición no editable en formulario
+            wmsInventoryData[i][2], // Nivel no editable en formulario
+            document.getElementById('wms-edit-sku').value,
+            document.getElementById('wms-edit-lpn').value,
+            document.getElementById('wms-edit-venc').value
+        ];
+        
+        await fetch(WMS_SCRIPT_URL, { method: 'POST', body: JSON.stringify(wmsInventoryData) });
+        wmsCloseModal();
+        wmsSyncData();
     }
 
-    async function guardarCambios() {
-        let i = document.getElementById('editIdx').value;
-        data[i] = [document.getElementById('editRack').value, document.getElementById('editPos').value, 
-                   document.getElementById('editNivel').value, document.getElementById('editSKU').value, 
-                   document.getElementById('editLPN').value, document.getElementById('editVenc').value];
-        await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(data) });
-        document.getElementById('modal').style.display = 'none';
-        render();
-    }
-
-    function exportarCSV() {
-        let csv = "data:text/csv;charset=utf-8," + data.map(e => e.join(",")).join("\n");
+    function wmsExportToExcel() {
+        let csv = "data:text/csv;charset=utf-8," + wmsInventoryData.map(e => e.join(",")).join("\n");
         let link = document.createElement("a");
         link.setAttribute("href", encodeURI(csv));
-        link.setAttribute("download", "Inventario.csv");
+        link.setAttribute("download", "WMS_Inventario_Central.csv");
         link.click();
     }
     
-    cargarDatos();
+    // Funciones de control de formulario
+    function wmsOpenEditModal(i) {
+        document.getElementById('wms-edit-idx').value = i;
+        document.getElementById('wms-edit-rack').value = wmsInventoryData[i][0];
+        document.getElementById('wms-edit-sku').value = wmsInventoryData[i][3];
+        document.getElementById('wms-edit-lpn').value = wmsInventoryData[i][4];
+        document.getElementById('wms-edit-venc').value = wmsInventoryData[i][5];
+        document.getElementById('wms-modal').style.display = 'flex';
+    }
+    function wmsCloseModal() {
+        document.getElementById('wms-modal').style.display = 'none';
+    }
+    
+    wmsSyncData(); // Auto-carga al iniciar
 </script>
 </body>
 </html>
