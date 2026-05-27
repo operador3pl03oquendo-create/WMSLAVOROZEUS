@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8"><title>WMS Centralizado</title>
+    <meta charset="UTF-8">
+    <title>WMS Centralizado</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body { font-family: sans-serif; background: #f0f2f5; padding: 10px; }
         .controls { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
-        .pos { background: white; padding: 10px; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; }
+        .pos { background: white; padding: 10px; border-radius: 8px; border: 1px solid #ddd; }
     </style>
 </head>
 <body>
@@ -17,28 +18,18 @@
     <div id="grid" class="grid"></div>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwVHzGceuCsqJ-R8hAbO1fjaKyNyWgIA6p4zU7GhPjHjNJUuw_-3cunChykown5HP16Tg/exec"; //
-        let data = {};
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwVHzGceuCsqJ-R8hAbO1fjaKyNyWgIA6p4zU7GhPjHjNJUuw_-3cunChykown5HP16Tg/exec";
+        let data = [];
         
         async function cargarDatos() {
             const resp = await fetch(SCRIPT_URL);
-            const rows = await resp.json();
-            data = {};
-            for(let i=1; i<rows.length; i++) {
-                let [r,p,n,sku,lpn,venc] = rows[i];
-                data[`R${r}-P${p}-N${n}`] = {sku,lpn,n,venc};
-            }
-            render();
-        }
-        function render() {
+            data = await resp.json();
             const grid = document.getElementById('grid');
             grid.innerHTML = '';
-            for(let key in data) {
-                let d = data[key];
-                grid.innerHTML += `<div class="pos"><strong>${key}</strong><br>${d.sku}<br>${d.lpn}</div>`;
+            for(let i=1; i<data.length; i++) {
+                grid.innerHTML += `<div class="pos"><strong>R${data[i][0]}-P${data[i][1]}-N${data[i][2]}</strong><br>SKU: ${data[i][3]}<br>LPN: ${data[i][4]}</div>`;
             }
         }
-        cargarDatos();
     </script>
 </body>
 </html>
