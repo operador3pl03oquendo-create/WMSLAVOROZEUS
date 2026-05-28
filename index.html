@@ -68,10 +68,10 @@
         const g = document.getElementById('grid');
         g.innerHTML = '';
         for(let i=1; i < items.length; i++) {
-            let ubicacion = items[i][0] ? `Rack: ${items[i][0]}` : `Patio: ${items[i][6]}`;
+            let ubi = items[i][0] ? `Rack: ${items[i][0]}` : `Patio: ${items[i][6]}`;
             g.innerHTML += `
                 <div class="card" onclick="edit(${i})">
-                    <strong>${ubicacion}</strong><br>
+                    <strong>${ubi}</strong><br>
                     SKU: ${items[i][3]}<br>
                     LPN: ${items[i][4]}<br>
                     <small>Pos: ${items[i][1] || '-'} | Niv: ${items[i][2] || '-'}</small>
@@ -90,8 +90,8 @@
 
     function startScanner() {
         document.getElementById('reader').style.display = 'block';
-        new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 }).render((decodedText) => {
-            document.getElementById('search').value = decodedText;
+        new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 }).render((data) => {
+            document.getElementById('search').value = data;
             filterData();
             document.getElementById('reader').style.display = 'none';
         });
