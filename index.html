@@ -2,26 +2,30 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WMS Pro - Operativo</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { font-family: sans-serif; background: #f4f7f6; padding: 10px; }
-        .panel { background: #2c3e50; color: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; }
-        .grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
-        .card { background: white; padding: 15px; border-radius: 8px; border: 1px solid #ccc; cursor: pointer; }
-        #reader { width: 100%; max-width: 400px; margin: auto; display: none; }
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); padding: 20px; z-index: 1000; }
-        .modal-content { background: white; padding: 20px; border-radius: 10px; max-width: 400px; margin: auto; }
-        input { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; }
-        button { width: 100%; padding: 12px; background: #3498db; color: white; border: none; margin-top: 5px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; padding: 10px; margin: 0; }
+        .panel { background: #2c3e50; color: white; padding: 20px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .btn-main { background: #3498db; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 10px; font-weight: bold; }
+        .btn-scan { background: #e67e22; } /* Naranja distintivo */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+        .card { background: white; padding: 15px; border-radius: 10px; border: 1px solid #dcdde1; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: transform 0.2s; }
+        .card:hover { transform: translateY(-2px); }
+        #reader { width: 100%; max-width: 400px; margin: 10px auto; display: none; border-radius: 10px; overflow: hidden; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); padding: 20px; z-index: 1000; }
+        .modal-content { background: white; padding: 25px; border-radius: 15px; max-width: 400px; margin: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; margin-top: 5px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="panel">
-    <h3>WMS Pro</h3>
-    <button onclick="startScanner()" style="background: #e67e22;">📷 Escanear Ubicación / LPN</button>
-    <button onclick="sync()">Sincronizar</button>
+    <h2 style="margin:0;">WMS Pro</h2>
+    <button class="btn-main btn-scan" onclick="startScanner()">📷 Escanear Código</button>
+    <button class="btn-main" style="background:#27ae60;" onclick="sync()">🔄 Sincronizar Datos</button>
 </div>
 
 <div id="reader"></div>
@@ -36,15 +40,15 @@
         Niv:<input type="number" id="eN">
         SKU:<input type="text" id="eS">
         LPN:<input type="text" id="eL">
-        <button onclick="save()">Guardar Cambios</button>
-        <button onclick="document.getElementById('modal').style.display='none'" style="background:gray;">Cancelar</button>
+        Fecha Vencimiento:<input type="date" id="eF">
+        <button onclick="save()" style="background:#3498db; color:white;">Guardar Cambios</button>
+        <button onclick="document.getElementById('modal').style.display='none'" style="background:#95a5a6; color:white;">Cancelar</button>
     </div>
 </div>
 
 <script>
-    // ========================================================
-    const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec";
-    // ========================================================
+    // PEGA AQUÍ TU URL
+    const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; 
     let data = [];
     let html5QrCode;
 
@@ -55,8 +59,9 @@
         g.innerHTML = '';
         for(let i=1; i<data.length; i++) {
             g.innerHTML += `<div class="card" onclick="edit(${i})">
-                <strong>R${data[i][0]}-P${data[i][1]}-N${data[i][2]}</strong><br>
-                SKU: ${data[i][3]} | LPN: ${data[i][4]}</div>`;
+                <strong style="color:#2c3e50;">R${data[i][0]}-P${data[i][1]}-N${data[i][2]}</strong><br>
+                <small>SKU: ${data[i][3]}</small><br>
+                <small>LPN: ${data[i][4]}</small></div>`;
         }
     }
 
@@ -77,11 +82,12 @@
             document.getElementById('eR').value = p[1];
             document.getElementById('eP').value = p[2];
             document.getElementById('eN').value = p[3];
-            alert("Ubicación cargada: " + cod);
+            alert("Ubicación encontrada: " + cod);
         } else if (cod.startsWith("LPN")) {
             document.getElementById('eL').value = cod;
-            alert("Paleta cargada: " + cod);
+            alert("LPN detectado: " + cod);
         }
+        document.getElementById('modal').style.display = 'block';
     }
 
     function edit(i) {
@@ -91,13 +97,17 @@
         document.getElementById('eN').value = data[i][2];
         document.getElementById('eS').value = data[i][3];
         document.getElementById('eL').value = data[i][4];
+        if(data[i][5]) {
+            let d = new Date(data[i][5]);
+            document.getElementById('eF').value = d.toISOString().split('T')[0];
+        }
         document.getElementById('modal').style.display = 'block';
     }
 
     async function save() {
         let i = parseInt(document.getElementById('idx').value);
-        data[i] = [document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, document.getElementById('eS').value, document.getElementById('eL').value, ""];
-        await fetch(URL, { method:'POST', body: JSON.stringify({ datos: data, movimiento: { rack: data[i][0], ubiAnt: "N/A", ubiNue: `R${data[i][0]}-P${data[i][1]}-N${data[i][2]}`, sku: data[i][3], lpn: data[i][4], fechaVenc: "" }})});
+        data[i] = [document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, document.getElementById('eS').value, document.getElementById('eL').value, document.getElementById('eF').value];
+        await fetch(URL, { method:'POST', body: JSON.stringify({ datos: data, movimiento: { rack: data[i][0], ubiAnt: "N/A", ubiNue: `R${data[i][0]}-P${data[i][1]}-N${data[i][2]}`, sku: data[i][3], lpn: data[i][4], fechaVenc: document.getElementById('eF').value }})});
         document.getElementById('modal').style.display = 'none';
         sync();
     }
