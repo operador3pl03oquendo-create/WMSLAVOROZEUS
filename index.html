@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WMS Pro - Operativo</title>
+    <title>WMS Pro</title>
     <style>
         body { font-family: sans-serif; background: #f4f7f6; padding: 10px; }
         .panel { background: #2c3e50; color: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; }
@@ -40,14 +40,17 @@
 </div>
 
 <script>
-    const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; 
+    const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec";
     let data = [];
 
     async function sync() {
-        const r = await fetch(URL);
-        data = await r.json();
-        render();
+        try {
+            const r = await fetch(URL);
+            data = await r.json();
+            render();
+        } catch(e) { alert("Error al conectar con Sheets. Verifica el nombre de la pestaña."); }
     }
+    
     function render() {
         const b = document.getElementById('filtro').value.toLowerCase();
         const g = document.getElementById('grid');
@@ -60,6 +63,7 @@
             }
         }
     }
+    
     function edit(i) {
         document.getElementById('idx').value = i;
         document.getElementById('eR').value = data[i][0];
@@ -69,6 +73,7 @@
         document.getElementById('eL').value = data[i][4];
         document.getElementById('modal').style.display = 'block';
     }
+    
     async function save() {
         let i = parseInt(document.getElementById('idx').value);
         let ubiAnt = `R${data[i][0]}-P${data[i][1]}-N${data[i][2]}`;
@@ -91,7 +96,7 @@
         });
         document.getElementById('modal').style.display = 'none';
         sync();
-        alert("Guardado: " + ubiAnt + " a " + ubiNue);
+        alert("Guardado correctamente.");
     }
     sync();
 </script>
