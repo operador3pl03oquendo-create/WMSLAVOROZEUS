@@ -2,54 +2,36 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WMS Pro</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { font-family: sans-serif; padding: 10px; background: #f4f7f6; margin: 0; }
-        .panel { background: #2c3e50; color: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        body { font-family: sans-serif; padding: 10px; background: #f4f7f6; }
+        .panel { background: #2c3e50; color: white; padding: 15px; border-radius: 10px; }
         .btn { padding: 15px; margin-top: 10px; width: 100%; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; }
-        .search-box { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        .grid { display: flex; flex-direction: column; gap: 10px; }
-        .card { background: white; padding: 15px; border-radius: 10px; border-left: 6px solid #3498db; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); padding: 20px; z-index: 1000; overflow-y: auto; }
-        .modal-content { background: white; padding: 20px; border-radius: 15px; max-width: 400px; margin: auto; }
-        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
+        .card { background: white; padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 6px solid #3498db; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); padding: 20px; z-index: 1000; overflow-y: auto; }
+        input, select { width: 100%; padding: 12px; margin: 5px 0; box-sizing: border-box; }
     </style>
 </head>
 <body>
 
 <div class="panel">
     <button class="btn" style="background:#e67e22" onclick="startScanner()">📷 Escanear y Editar</button>
-    <div id="reader" style="display:none; width: 100%;"></div>
     <button class="btn" style="background:#27ae60" onclick="sync()">🔄 Sincronizar</button>
-    <input type="text" id="search" class="search-box" placeholder="🔍 Buscar (Rack, SKU, LPN)..." onkeyup="filterData()">
 </div>
-
-<div id="grid" class="grid"></div>
+<div id="grid"></div>
 
 <div id="modal" class="modal">
-    <div class="modal-content">
+    <div style="background:white; padding:20px; border-radius:10px;">
         <h3>Gestionar Registro</h3>
         <input type="hidden" id="idx">
-        <label>Tipo:</label>
         <select id="tipoUbi" onchange="toggleUbi()">
-            <option value="Rack">Rack</option>
-            <option value="Temporal">Temporal</option>
+            <option value="Rack">Rack</option><option value="Temporal">Temporal</option>
         </select>
-        <div id="divRack">
-            <input type="text" id="eR" placeholder="Rack">
-            <input type="text" id="eP" placeholder="Posición">
-            <input type="text" id="eN" placeholder="Nivel">
-        </div>
-        <div id="divTemp" style="display:none;">
-            <input type="text" id="ePatio" placeholder="Patio">
-            <input type="text" id="ePiso" placeholder="Piso">
-            <input type="text" id="ePasillo" placeholder="Pasillo">
-        </div>
-        <input type="text" id="eS" placeholder="SKU">
-        <input type="text" id="eL" placeholder="LPN">
-        <input type="date" id="eVen">
+        <div id="divRack"><input id="eR" placeholder="Rack"><input id="eP" placeholder="Posición"><input id="eN" placeholder="Nivel"></div>
+        <div id="divTemp" style="display:none;"><input id="ePatio" placeholder="Patio"><input id="ePiso" placeholder="Piso"><input id="ePasillo" placeholder="Pasillo"></div>
+        <input id="eS" placeholder="SKU"><input id="eL" placeholder="LPN"><input type="date" id="eVen">
         <button class="btn" style="background:#3498db" onclick="save()">Guardar</button>
         <button class="btn" style="background:#e74c3c" onclick="cancelar()">Cancelar</button>
     </div>
@@ -58,55 +40,32 @@
 <script>
     const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; 
     let data = [];
-    window.onload = () => sync();
-
-    async function sync() { data = await (await fetch(URL)).json(); render(data); }
-
-    function render(items) {
-        const g = document.getElementById('grid'); g.innerHTML = '';
-        for(let i=1; i < items.length; i++) {
-            let ubi = items[i][0] ? `Rack ${items[i][0]} - Pos ${items[i][1]}` : `Patio ${items[i][6]} - Piso ${items[i][7]}`;
-            g.innerHTML += `<div class="card" onclick="edit(${i})"><strong>${ubi}</strong><br>SKU: ${items[i][3]} | LPN: ${items[i][4]}</div>`;
-        }
+    async function sync() { data = await (await fetch(URL)).json(); render(); }
+    function render() {
+        let g = document.getElementById('grid'); g.innerHTML = '';
+        for(let i=1; i<data.length; i++) g.innerHTML += `<div class="card" onclick="edit(${i})"><strong>Ubicación: ${data[i][0] || data[i][6]}</strong><br>SKU: ${data[i][3]} | LPN: ${data[i][4]}</div>`;
     }
-
     function toggleUbi() {
         let t = document.getElementById('tipoUbi').value;
-        document.getElementById('divRack').style.display = (t === 'Rack') ? 'block' : 'none';
-        document.getElementById('divTemp').style.display = (t === 'Temporal') ? 'block' : 'none';
+        document.getElementById('divRack').style.display = t=='Rack'?'block':'none';
+        document.getElementById('divTemp').style.display = t=='Temporal'?'block':'none';
     }
-
-    function startScanner() {
-        document.getElementById('reader').style.display = 'block';
-        let h = new Html5Qrcode("reader");
-        h.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
-            h.stop(); document.getElementById('reader').style.display = 'none';
-            let i = data.findIndex(r => r[4] == text);
-            if(i !== -1) edit(i); else { document.getElementById('idx').value="nuevo"; document.getElementById('eL').value=text; document.getElementById('modal').style.display='block'; }
-        });
-    }
-
-    function edit(i) {
-        document.getElementById('idx').value = i;
-        document.getElementById('eR').value = data[i][0] || ""; document.getElementById('eP').value = data[i][1] || "";
-        document.getElementById('eN').value = data[i][2] || ""; document.getElementById('eS').value = data[i][3] || "";
-        document.getElementById('eL').value = data[i][4] || ""; document.getElementById('eVen').value = data[i][5] || "";
-        document.getElementById('ePatio').value = data[i][6] || ""; document.getElementById('ePiso').value = data[i][7] || "";
-        document.getElementById('ePasillo').value = data[i][8] || "";
-        document.getElementById('tipoUbi').value = data[i][0] ? "Rack" : "Temporal";
-        toggleUbi(); document.getElementById('modal').style.display = 'block';
-    }
-
     async function save() {
         let i = document.getElementById('idx').value;
         let fila = [document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, document.getElementById('eS').value, document.getElementById('eL').value, document.getElementById('eVen').value, document.getElementById('ePatio').value, document.getElementById('ePiso').value, document.getElementById('ePasillo').value];
-        if (i === "nuevo") data.push(fila); else data[parseInt(i)] = fila;
+        if (i == "nuevo") data.push(fila); else data[parseInt(i)] = fila;
         await fetch(URL, { method: 'POST', body: JSON.stringify({ datos: data.slice(1), fila: fila }) });
-        document.getElementById('modal').style.display = 'none'; sync();
+        alert("Sincronizado"); document.getElementById('modal').style.display = 'none'; sync();
     }
-    
+    function edit(i) {
+        document.getElementById('idx').value = i;
+        document.getElementById('eR').value = data[i][0]; document.getElementById('eP').value = data[i][1]; document.getElementById('eN').value = data[i][2]; 
+        document.getElementById('eS').value = data[i][3]; document.getElementById('eL').value = data[i][4]; document.getElementById('eVen').value = data[i][5];
+        document.getElementById('ePatio').value = data[i][6]; document.getElementById('ePiso').value = data[i][7]; document.getElementById('ePasillo').value = data[i][8];
+        document.getElementById('modal').style.display = 'block';
+    }
     function cancelar() { document.getElementById('modal').style.display = 'none'; }
-    function filterData() { let q = document.getElementById('search').value.toLowerCase(); let f = data.filter((r, i) => i > 0 && r.join(' ').toLowerCase().includes(q)); render([data[0], ...f]); }
+    function startScanner() { /* Tu lógica de escáner aquí */ }
 </script>
 </body>
 </html>
