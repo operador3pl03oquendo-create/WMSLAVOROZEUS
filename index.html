@@ -3,42 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <title>WMS Pro</title>
-    <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body { font-family: sans-serif; background: #f4f7f6; padding: 10px; }
-        .panel { background: #2c3e50; color: white; padding: 15px; border-radius: 10px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-top: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
         .card { background: white; padding: 10px; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; }
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); padding: 20px; z-index: 1000; }
         .modal-content { background: white; padding: 20px; border-radius: 10px; max-width: 400px; margin: auto; }
-        input, select { width: 100%; padding: 8px; margin: 5px 0; }
+        input, select { width: 100%; padding: 8px; margin: 5px 0; box-sizing: border-box; }
     </style>
 </head>
 <body>
-
-<div class="panel">
-    <h3>WMS Pro</h3>
     <button onclick="sync()">🔄 Sincronizar</button>
-</div>
-<div id="grid" class="grid"></div>
+    <div id="grid" class="grid"></div>
 
-<div id="modal" class="modal">
-    <div class="modal-content">
-        <h3>Editar Ubicación</h3>
-        <input type="hidden" id="idx">
-        Tipo: <select id="tipoUbi" onchange="toggleUbi()">
-            <option value="Rack">Rack</option>
-            <option value="Temporal">Temporal</option>
-        </select>
-        <div id="divRack">Rack:<input type="number" id="eR">Pos:<input type="number" id="eP">Niv:<input type="number" id="eN"></div>
-        <div id="divTemp" style="display:none;">Patio:<input type="text" id="ePatio">Piso:<input type="text" id="ePiso">Pasillo:<input type="text" id="ePasillo"></div>
-        SKU:<input type="text" id="eS"> LPN:<input type="text" id="eL">
-        <button onclick="save()">Guardar</button>
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <h3>Editar</h3>
+            <input type="hidden" id="idx">
+            Tipo: <select id="tipoUbi" onchange="toggleUbi()">
+                <option value="Rack">Rack</option>
+                <option value="Temporal">Temporal</option>
+            </select>
+            <div id="divRack">Rack:<input type="number" id="eR">Pos:<input type="number" id="eP">Niv:<input type="number" id="eN"></div>
+            <div id="divTemp" style="display:none;">Patio:<input type="text" id="ePatio">Piso:<input type="text" id="ePiso">Pasillo:<input type="text" id="ePasillo"></div>
+            SKU:<input type="text" id="eS"> LPN:<input type="text" id="eL">
+            <button onclick="save()" style="background:#27ae60; color:white; border:none; padding:10px; width:100%;">Guardar</button>
+        </div>
     </div>
-</div>
 
 <script>
-    const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; 
+    const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; //
     let data = [];
 
     async function sync() {
@@ -51,8 +45,7 @@
         const g = document.getElementById('grid');
         g.innerHTML = '';
         for(let i=1; i < data.length; i++) {
-            let row = data[i];
-            g.innerHTML += `<div class="card" onclick="edit(${i})"><strong>${row[0]?'R'+row[0]:'P:'+row[6]}</strong><br>SKU: ${row[3]}</div>`;
+            g.innerHTML += `<div class="card" onclick="edit(${i})"><strong>${data[i][0]?'R'+data[i][0]:'Patio:'+data[i][6]}</strong><br>SKU: ${data[i][3]}</div>`;
         }
     }
 
@@ -79,8 +72,12 @@
 
     async function save() {
         let i = parseInt(document.getElementById('idx').value);
-        data[i] = [document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, document.getElementById('eS').value, document.getElementById('eL').value, data[i][5], document.getElementById('ePatio').value, document.getElementById('ePiso').value, document.getElementById('ePasillo').value];
-        await fetch(URL, { method:'POST', body: JSON.stringify({ datos: data }) });
+        data[i] = [
+            document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value,
+            document.getElementById('eS').value, document.getElementById('eL').value, data[i][5],
+            document.getElementById('ePatio').value, document.getElementById('ePiso').value, document.getElementById('ePasillo').value
+        ];
+        await fetch(URL, { method: 'POST', body: JSON.stringify({ datos: data.slice(1) }) });
         document.getElementById('modal').style.display = 'none';
         sync();
     }
