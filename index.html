@@ -2,37 +2,44 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WMS Pro</title>
     <style>
         body { font-family: sans-serif; background: #f4f7f6; padding: 10px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
-        .card { background: white; padding: 10px; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; }
+        .panel { background: #2c3e50; color: white; padding: 15px; border-radius: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-top: 15px; }
+        .card { background: white; padding: 12px; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); padding: 20px; z-index: 1000; }
         .modal-content { background: white; padding: 20px; border-radius: 10px; max-width: 400px; margin: auto; }
-        input, select { width: 100%; padding: 8px; margin: 5px 0; box-sizing: border-box; }
-        .btn-g { background:#27ae60; color:white; border:none; padding:10px; width:100%; cursor:pointer; }
-        .btn-c { background:#e74c3c; color:white; border:none; padding:10px; width:100%; margin-top:5px; cursor:pointer; }
+        input, select { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .btn-sync { background: #27ae60; border: none; padding: 12px; color: white; width: 100%; border-radius: 8px; cursor: pointer; }
+        .btn-g { background:#3498db; color:white; border:none; padding:12px; width:100%; margin-top:10px; cursor:pointer; }
+        .btn-c { background:#e74c3c; color:white; border:none; padding:12px; width:100%; margin-top:5px; cursor:pointer; }
     </style>
 </head>
 <body>
-    <button onclick="sync()">🔄 Sincronizar</button>
-    <div id="grid" class="grid"></div>
 
-    <div id="modal" class="modal">
-        <div class="modal-content">
-            <h3>Editar</h3>
-            <input type="hidden" id="idx">
-            Tipo: <select id="tipoUbi" onchange="toggleUbi()">
-                <option value="Rack">Rack</option>
-                <option value="Temporal">Temporal</option>
-            </select>
-            <div id="divRack">Rack:<input type="number" id="eR">Pos:<input type="number" id="eP">Niv:<input type="number" id="eN"></div>
-            <div id="divTemp" style="display:none;">Patio:<input type="text" id="ePatio">Piso:<input type="text" id="ePiso">Pasillo:<input type="text" id="ePasillo"></div>
-            SKU:<input type="text" id="eS"> LPN:<input type="text" id="eL">
-            <button class="btn-g" onclick="save()">Guardar</button>
-            <button class="btn-c" onclick="cancelar()">Cancelar</button>
-        </div>
+<div class="panel">
+    <h3>WMS Pro</h3>
+    <button class="btn-sync" onclick="sync()">🔄 Sincronizar</button>
+</div>
+<div id="grid" class="grid"></div>
+
+<div id="modal" class="modal">
+    <div class="modal-content">
+        <h3>Editar Ubicación</h3>
+        <input type="hidden" id="idx">
+        Tipo: <select id="tipoUbi" onchange="toggleUbi()">
+            <option value="Rack">Rack</option>
+            <option value="Temporal">Temporal</option>
+        </select>
+        <div id="divRack">Rack:<input type="number" id="eR">Pos:<input type="number" id="eP">Niv:<input type="number" id="eN"></div>
+        <div id="divTemp" style="display:none;">Patio:<input type="text" id="ePatio">Piso:<input type="text" id="ePiso">Pasillo:<input type="text" id="ePasillo"></div>
+        SKU:<input type="text" id="eS"> LPN:<input type="text" id="eL">
+        <button class="btn-g" onclick="save()">Guardar</button>
+        <button class="btn-c" onclick="cancelar()">Cancelar</button>
     </div>
+</div>
 
 <script>
     const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; 
@@ -77,13 +84,9 @@
 
     async function save() {
         let i = parseInt(document.getElementById('idx').value);
-        data[i] = [
-            document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value,
-            document.getElementById('eS').value, document.getElementById('eL').value, data[i][5],
-            document.getElementById('ePatio').value, document.getElementById('ePiso').value, document.getElementById('ePasillo').value
-        ];
+        data[i] = [document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, document.getElementById('eS').value, document.getElementById('eL').value, data[i][5], document.getElementById('ePatio').value, document.getElementById('ePiso').value, document.getElementById('ePasillo').value];
         await fetch(URL, { method: 'POST', body: JSON.stringify({ datos: data.slice(1) }) });
-        alert("Guardado correctamente y registrado en Historial");
+        alert("Guardado correctamente");
         document.getElementById('modal').style.display = 'none';
         sync();
     }
