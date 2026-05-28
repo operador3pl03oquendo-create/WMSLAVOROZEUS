@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WMS Pro - Operativo</title>
+    <title>WMS Pro</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; padding: 10px; }
         .panel { background: #2c3e50; color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
-        .btn-scan { background: #e67e22; border: none; padding: 15px; color: white; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
-        .btn-sync { background: #27ae60; border: none; padding: 15px; color: white; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .btn-scan { background: #e67e22; border: none; padding: 15px; color: white; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .btn-sync { background: #27ae60; border: none; padding: 15px; color: white; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .search-box { width: 100%; padding: 15px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
         .card { background: white; padding: 15px; border-radius: 10px; border: 1px solid #ddd; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
@@ -34,7 +34,7 @@
 
 <div id="modal" class="modal">
     <div class="modal-content">
-        <h3>Editar / Cargar Datos</h3>
+        <h3>Gestionar Registro</h3>
         <input type="hidden" id="idx">
         <label>Tipo:</label>
         <select id="tipoUbi" onchange="toggleUbi()">
@@ -43,8 +43,7 @@
         </select>
         <div id="divRack">Rack:<input type="number" id="eR"> Pos:<input type="number" id="eP"> Niv:<input type="number" id="eN"></div>
         <div id="divTemp" style="display:none;">Patio:<input type="text" id="ePatio"> Piso:<input type="text" id="ePiso"> Pasillo:<input type="text" id="ePasillo"></div>
-        SKU:<input type="text" id="eS"> 
-        LPN:<input type="text" id="eL">
+        SKU:<input type="text" id="eS"> LPN:<input type="text" id="eL">
         Vencimiento:<input type="date" id="eVen">
         <button class="btn-g" onclick="save()">Guardar</button>
         <button class="btn-c" onclick="cancelar()">Cancelar</button>
@@ -79,20 +78,19 @@
         document.getElementById('reader').style.display = 'block';
         html5QrCode = new Html5Qrcode("reader");
         html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decodedText) => {
-            document.getElementById('search').value = decodedText;
+            html5QrCode.stop();
+            document.getElementById('reader').style.display = 'none';
+            
             let foundIdx = data.findIndex(row => row[4] == decodedText);
             
             if(foundIdx !== -1) {
                 edit(foundIdx);
             } else {
-                if(confirm("LPN " + decodedText + " no encontrado. ¿Deseas crearlo como nuevo?")) {
-                    document.getElementById('idx').value = "nuevo";
-                    document.getElementById('eL').value = decodedText;
-                    document.getElementById('modal').style.display = 'block';
-                }
+                // Aquí está el cambio: abre el formulario directamente si no existe
+                document.getElementById('idx').value = "nuevo";
+                document.getElementById('eL').value = decodedText;
+                document.getElementById('modal').style.display = 'block';
             }
-            html5QrCode.stop();
-            document.getElementById('reader').style.display = 'none';
         });
     }
 
@@ -118,27 +116,18 @@
         document.getElementById('divTemp').style.display = t === 'Temporal' ? 'block' : 'none';
     }
 
-    function cancelar() { 
-        document.getElementById('modal').style.display = 'none'; 
-        if(html5QrCode) html5QrCode.stop(); 
-        document.getElementById('reader').style.display = 'none';
-    }
+    function cancelar() { document.getElementById('modal').style.display = 'none'; }
 
     async function save() {
         let idxVal = document.getElementById('idx').value;
         let newData = [
-            document.getElementById('eR').value, document.getElementById('eP').value, 
-            document.getElementById('eN').value, document.getElementById('eS').value, 
-            document.getElementById('eL').value, document.getElementById('eVen').value, 
-            document.getElementById('ePatio').value, document.getElementById('ePiso').value, 
-            document.getElementById('ePasillo').value
+            document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value,
+            document.getElementById('eS').value, document.getElementById('eL').value, document.getElementById('eVen').value,
+            document.getElementById('ePatio').value, document.getElementById('ePiso').value, document.getElementById('ePasillo').value
         ];
 
-        if (idxVal === "nuevo") {
-            data.push(newData);
-        } else {
-            data[parseInt(idxVal)] = newData;
-        }
+        if (idxVal === "nuevo") { data.push(newData); } 
+        else { data[parseInt(idxVal)] = newData; }
 
         await fetch(URL, { method: 'POST', body: JSON.stringify({ datos: data.slice(1) }) });
         alert("Guardado correctamente");
