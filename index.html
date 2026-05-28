@@ -8,7 +8,7 @@
     <style>
         body { font-family: sans-serif; background: #f4f7f6; padding: 10px; }
         .panel { background: #2c3e50; color: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; }
-        .btn-scan { background: #e67e22; border: none; padding: 12px; width: 100%; color: white; font-weight: bold; border-radius: 8px; cursor: pointer; }
+        .btn-scan { background: #e67e22; border: none; padding: 15px; width: 100%; color: white; font-weight: bold; border-radius: 8px; cursor: pointer; }
         .search-box { width: 100%; padding: 12px; margin-top: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-top: 10px; }
         .card { background: white; padding: 12px; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
@@ -55,19 +55,17 @@
 
     function render() {
         const q = document.getElementById('search').value.toLowerCase();
-        // Filtramos a partir de la fila 1 (ignorando cabeceras)
         let filtrado = data.slice(1).filter(row => 
             row.some(cell => String(cell).toLowerCase().includes(q))
         );
         
-        // Ordenar por fecha de vencimiento (Columna 5)
+        // Ordenar por fecha de vencimiento (índice 5)
         filtrado.sort((a, b) => new Date(a[5]) - new Date(b[5]));
 
         const g = document.getElementById('grid');
         g.innerHTML = '';
         filtrado.forEach(row => {
             let originalIdx = data.findIndex(d => d[3] === row[3] && d[4] === row[4]);
-            // Formateamos fecha para mostrar
             let fecha = row[5] ? new Date(row[5]).toLocaleDateString() : "N/A";
             g.innerHTML += `<div class="card" onclick="edit(${originalIdx})">
                 <strong>R${row[0]}-P${row[1]}-N${row[2]}</strong><br>
