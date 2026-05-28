@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WMS Pro</title>
+    <title>WMS Pro - Operativo</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; padding: 10px; }
@@ -16,8 +16,8 @@
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); padding: 20px; z-index: 1000; overflow-y: auto; }
         .modal-content { background: white; padding: 25px; border-radius: 15px; max-width: 400px; margin: auto; }
         input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; }
-        .btn-g { background: #3498db; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; cursor: pointer; }
-        .btn-c { background: #e74c3c; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; cursor: pointer; margin-top: 10px; }
+        .btn-g { background: #3498db; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; }
+        .btn-c { background: #e74c3c; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -25,7 +25,7 @@
 <div class="panel">
     <h2>WMS Pro</h2>
     <button class="btn-scan" onclick="startScanner()">📷 Escanear y Editar</button>
-    <div id="reader" style="width: 100%;"></div>
+    <div id="reader" style="width: 100%; display:none;"></div>
     <button class="btn-sync" onclick="sync()">🔄 Sincronizar</button>
     <input type="text" id="search" class="search-box" placeholder="🔍 Buscar..." onkeyup="filterData()">
 </div>
@@ -34,7 +34,7 @@
 
 <div id="modal" class="modal">
     <div class="modal-content">
-        <h3>Editar Ubicación</h3>
+        <h3>Editar / Cargar Datos</h3>
         <input type="hidden" id="idx">
         <label>Tipo:</label>
         <select id="tipoUbi" onchange="toggleUbi()">
@@ -43,7 +43,8 @@
         </select>
         <div id="divRack">Rack:<input type="number" id="eR"> Pos:<input type="number" id="eP"> Niv:<input type="number" id="eN"></div>
         <div id="divTemp" style="display:none;">Patio:<input type="text" id="ePatio"> Piso:<input type="text" id="ePiso"> Pasillo:<input type="text" id="ePasillo"></div>
-        SKU:<input type="text" id="eS"> LPN:<input type="text" id="eL">
+        SKU:<input type="text" id="eS"> 
+        LPN:<input type="text" id="eL">
         Vencimiento:<input type="date" id="eVen">
         <button class="btn-g" onclick="save()">Guardar</button>
         <button class="btn-c" onclick="cancelar()">Cancelar</button>
@@ -75,17 +76,23 @@
     }
 
     function startScanner() {
+        document.getElementById('reader').style.display = 'block';
         html5QrCode = new Html5Qrcode("reader");
         html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decodedText) => {
             document.getElementById('search').value = decodedText;
-            // Buscar índice por LPN (columna E, índice 4)
             let foundIdx = data.findIndex(row => row[4] == decodedText);
+            
             if(foundIdx !== -1) {
                 edit(foundIdx);
-                html5QrCode.stop();
             } else {
-                alert("LPN no encontrado: " + decodedText);
+                if(confirm("LPN " + decodedText + " no encontrado. ¿Deseas crearlo como nuevo?")) {
+                    document.getElementById('idx').value = "nuevo";
+                    document.getElementById('eL').value = decodedText;
+                    document.getElementById('modal').style.display = 'block';
+                }
             }
+            html5QrCode.stop();
+            document.getElementById('reader').style.display = 'none';
         });
     }
 
@@ -101,21 +108,48 @@
         document.getElementById('ePiso').value = data[i][7] || "";
         document.getElementById('ePasillo').value = data[i][8] || "";
         document.getElementById('tipoUbi').value = data[i][0] ? "Rack" : "Temporal";
+        toggleUbi();
         document.getElementById('modal').style.display = 'block';
+    }
+
+    function toggleUbi() {
+        let t = document.getElementById('tipoUbi').value;
+        document.getElementById('divRack').style.display = t === 'Rack' ? 'block' : 'none';
+        document.getElementById('divTemp').style.display = t === 'Temporal' ? 'block' : 'none';
     }
 
     function cancelar() { 
         document.getElementById('modal').style.display = 'none'; 
         if(html5QrCode) html5QrCode.stop(); 
+        document.getElementById('reader').style.display = 'none';
     }
 
     async function save() {
-        let i = parseInt(document.getElementById('idx').value);
-        data[i] = [document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, document.getElementById('eS').value, document.getElementById('eL').value, document.getElementById('eVen').value, document.getElementById('ePatio').value, document.getElementById('ePiso').value, document.getElementById('ePasillo').value];
+        let idxVal = document.getElementById('idx').value;
+        let newData = [
+            document.getElementById('eR').value, document.getElementById('eP').value, 
+            document.getElementById('eN').value, document.getElementById('eS').value, 
+            document.getElementById('eL').value, document.getElementById('eVen').value, 
+            document.getElementById('ePatio').value, document.getElementById('ePiso').value, 
+            document.getElementById('ePasillo').value
+        ];
+
+        if (idxVal === "nuevo") {
+            data.push(newData);
+        } else {
+            data[parseInt(idxVal)] = newData;
+        }
+
         await fetch(URL, { method: 'POST', body: JSON.stringify({ datos: data.slice(1) }) });
         alert("Guardado correctamente");
         document.getElementById('modal').style.display = 'none';
         sync();
+    }
+
+    function filterData() {
+        let q = document.getElementById('search').value.toLowerCase();
+        let filtered = data.filter((item, index) => index === 0 || item.join(' ').toLowerCase().includes(q));
+        render(filtered);
     }
 </script>
 </body>
