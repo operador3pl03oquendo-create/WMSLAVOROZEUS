@@ -41,7 +41,7 @@
 </div>
 
 <script>
-    const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; 
+    const URL = "TU_URL_AQUÍ"; 
     let data = [];
 
     async function sync() {
@@ -68,7 +68,7 @@
         document.getElementById('eN').value = data[i][2];
         document.getElementById('eS').value = data[i][3];
         document.getElementById('eL').value = data[i][4];
-        document.getElementById('eF').value = data[i][5] || '';
+        document.getElementById('eF').value = data[i][5] || ''; // Carga el dato guardado
         document.getElementById('modal').style.display = 'block';
     }
     async function save() {
@@ -94,7 +94,7 @@
         });
         document.getElementById('modal').style.display = 'none';
         sync();
-        alert("¡Guardado correctamente!");
+        alert("Guardado exitosamente.");
     }
     sync();
 </script>
