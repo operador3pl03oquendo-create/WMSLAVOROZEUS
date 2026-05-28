@@ -2,39 +2,51 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>WMS Pro</title>
+    <title>WMS Pro - Operativo</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { font-family: sans-serif; padding: 10px; }
+        body { font-family: sans-serif; background: #f4f7f6; padding: 10px; }
+        .panel { background: #2c3e50; color: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; }
         .grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
-        .card { background: #f0f0f0; padding: 15px; border-radius: 8px; cursor: pointer; border: 1px solid #ccc; }
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 20px; }
-        .modal-content { background: white; padding: 20px; border-radius: 8px; max-width: 400px; margin: auto; }
-        input { width: 100%; padding: 10px; margin-top: 5px; margin-bottom: 10px; }
+        .card { background: white; padding: 15px; border-radius: 8px; border: 1px solid #ccc; cursor: pointer; }
+        #reader { width: 100%; max-width: 400px; margin: auto; display: none; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); padding: 20px; z-index: 1000; }
+        .modal-content { background: white; padding: 20px; border-radius: 10px; max-width: 400px; margin: auto; }
+        input { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; }
+        button { width: 100%; padding: 12px; background: #3498db; color: white; border: none; margin-top: 5px; }
     </style>
 </head>
 <body>
 
-<h3>WMS Pro</h3>
+<div class="panel">
+    <h3>WMS Pro</h3>
+    <button onclick="startScanner()" style="background: #e67e22;">📷 Escanear Ubicación / LPN</button>
+    <button onclick="sync()">Sincronizar</button>
+</div>
+
+<div id="reader"></div>
 <div id="grid" class="grid"></div>
 
 <div id="modal" class="modal">
     <div class="modal-content">
-        <h3>Editar</h3>
+        <h3>Editar Ubicación</h3>
         <input type="hidden" id="idx">
         Rack:<input type="number" id="eR">
         Pos:<input type="number" id="eP">
         Niv:<input type="number" id="eN">
         SKU:<input type="text" id="eS">
         LPN:<input type="text" id="eL">
-        Vencimiento:<input type="date" id="eF">
-        <button onclick="save()">Guardar</button>
-        <button onclick="document.getElementById('modal').style.display='none'">Cancelar</button>
+        <button onclick="save()">Guardar Cambios</button>
+        <button onclick="document.getElementById('modal').style.display='none'" style="background:gray;">Cancelar</button>
     </div>
 </div>
 
 <script>
-    const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; //
+    // ========================================================
+    const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec";
+    // ========================================================
     let data = [];
+    let html5QrCode;
 
     async function sync() {
         const r = await fetch(URL);
@@ -48,6 +60,30 @@
         }
     }
 
+    function startScanner() {
+        document.getElementById('reader').style.display = 'block';
+        html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
+        (txt) => {
+            procesarCodigo(txt);
+            html5QrCode.stop();
+            document.getElementById('reader').style.display = 'none';
+        });
+    }
+
+    function procesarCodigo(cod) {
+        if (cod.startsWith("B")) {
+            let p = cod.split('-');
+            document.getElementById('eR').value = p[1];
+            document.getElementById('eP').value = p[2];
+            document.getElementById('eN').value = p[3];
+            alert("Ubicación cargada: " + cod);
+        } else if (cod.startsWith("LPN")) {
+            document.getElementById('eL').value = cod;
+            alert("Paleta cargada: " + cod);
+        }
+    }
+
     function edit(i) {
         document.getElementById('idx').value = i;
         document.getElementById('eR').value = data[i][0];
@@ -55,22 +91,13 @@
         document.getElementById('eN').value = data[i][2];
         document.getElementById('eS').value = data[i][3];
         document.getElementById('eL').value = data[i][4];
-        
-        // Manejo de fecha seguro
-        let f = data[i][5];
-        if(f) {
-            let d = new Date(f);
-            document.getElementById('eF').value = d.toISOString().split('T')[0];
-        }
         document.getElementById('modal').style.display = 'block';
     }
 
     async function save() {
         let i = parseInt(document.getElementById('idx').value);
-        let oldUbi = `R${data[i][0]}-P${data[i][1]}-N${data[i][2]}`;
-        data[i] = [document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, document.getElementById('eS').value, document.getElementById('eL').value, document.getElementById('eF').value];
-        
-        await fetch(URL, { method: 'POST', body: JSON.stringify({ datos: data, movimiento: { rack: data[i][0], ubiAnt: oldUbi, ubiNue: `R${data[i][0]}-P${data[i][1]}-N${data[i][2]}`, sku: data[i][3], lpn: data[i][4], fechaVenc: data[i][5] }})});
+        data[i] = [document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, document.getElementById('eS').value, document.getElementById('eL').value, ""];
+        await fetch(URL, { method:'POST', body: JSON.stringify({ datos: data, movimiento: { rack: data[i][0], ubiAnt: "N/A", ubiNue: `R${data[i][0]}-P${data[i][1]}-N${data[i][2]}`, sku: data[i][3], lpn: data[i][4], fechaVenc: "" }})});
         document.getElementById('modal').style.display = 'none';
         sync();
     }
