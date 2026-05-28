@@ -5,12 +5,15 @@
     <title>WMS Pro</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #f4f7f6; }
-        .panel { background: #2c3e50; color: white; padding: 20px; border-radius: 10px; }
-        input, select { width: 100%; padding: 10px; margin: 5px 0; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
+        body { font-family: sans-serif; padding: 15px; background: #f4f7f6; }
+        .panel { background: #2c3e50; color: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
         .btn { padding: 15px; margin-top: 10px; width: 100%; cursor: pointer; border: none; border-radius: 5px; color: white; font-weight: bold; }
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); padding: 20px; }
+        .search-box { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+        .card { background: white; padding: 10px; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); padding: 20px; z-index: 1000; }
         .modal-content { background: white; padding: 20px; border-radius: 10px; max-width: 400px; margin: auto; }
+        input, select { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
     </style>
 </head>
 <body>
@@ -19,7 +22,10 @@
     <button class="btn" style="background:#e67e22" onclick="startScanner()">📷 Escanear y Editar</button>
     <div id="reader" style="display:none; width: 100%;"></div>
     <button class="btn" style="background:#27ae60" onclick="sync()">🔄 Sincronizar</button>
+    <input type="text" id="search" class="search-box" placeholder="🔍 Buscar (Rack, SKU, LPN)..." onkeyup="filterData()">
 </div>
+
+<div id="grid" class="grid"></div>
 
 <div id="modal" class="modal">
     <div class="modal-content">
@@ -40,28 +46,30 @@
 <script>
     const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; 
     let data = [];
-    let html5QrCode;
+
+    window.onload = () => sync();
 
     async function sync() {
         const r = await fetch(URL);
         data = await r.json();
-        alert("Sincronizado");
+        render(data);
     }
 
-    function startScanner() {
-        document.getElementById('reader').style.display = 'block';
-        html5QrCode = new Html5Qrcode("reader");
-        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
-            html5QrCode.stop();
-            document.getElementById('reader').style.display = 'none';
-            let i = data.findIndex(r => r[4] == text);
-            if(i !== -1) edit(i);
-            else {
-                document.getElementById('idx').value = "nuevo";
-                document.getElementById('eL').value = text;
-                document.getElementById('modal').style.display = 'block';
-            }
-        });
+    function render(items) {
+        const g = document.getElementById('grid');
+        g.innerHTML = '';
+        for(let i=1; i < items.length; i++) {
+            g.innerHTML += `<div class="card" onclick="edit(${i})">
+                <strong>Rack: ${items[i][0]}</strong><br>
+                SKU: ${items[i][3]}<br>LPN: ${items[i][4]}
+            </div>`;
+        }
+    }
+
+    function filterData() {
+        let q = document.getElementById('search').value.toLowerCase();
+        let f = data.filter((row, i) => i > 0 && row.join(' ').toLowerCase().includes(q));
+        render([data[0], ...f]);
     }
 
     function edit(i) {
@@ -75,22 +83,16 @@
         document.getElementById('modal').style.display = 'block';
     }
 
-    function cancelar() { document.getElementById('modal').style.display = 'none'; }
-
     async function save() {
         let i = document.getElementById('idx').value;
         let fila = [document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, document.getElementById('eS').value, document.getElementById('eL').value, document.getElementById('eVen').value];
-        
-        if (i === "nuevo") data.push(fila);
-        else data[parseInt(i)] = fila;
-
-        await fetch(URL, { 
-            method: 'POST', 
-            body: JSON.stringify({ datos: data.slice(1), fila: fila }) 
-        });
-        alert("Guardado");
+        if (i === "nuevo") data.push(fila); else data[parseInt(i)] = fila;
+        await fetch(URL, { method: 'POST', body: JSON.stringify({ datos: data.slice(1), fila: fila }) });
         document.getElementById('modal').style.display = 'none';
+        sync();
     }
+    
+    function cancelar() { document.getElementById('modal').style.display = 'none'; }
 </script>
 </body>
 </html>
