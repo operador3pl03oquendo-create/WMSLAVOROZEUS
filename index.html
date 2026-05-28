@@ -2,46 +2,38 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WMS Pro</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body { font-family: sans-serif; background: #f4f7f6; padding: 10px; }
         .panel { background: #2c3e50; color: white; padding: 15px; border-radius: 10px; }
-        .btn-scan { background: #e67e22; border: none; padding: 15px; width: 100%; color: white; font-weight: bold; border-radius: 8px; cursor: pointer; margin-bottom:10px; }
-        .btn-sync { background: #27ae60; border: none; padding: 12px; width: 100%; color: white; font-weight: bold; border-radius: 8px; cursor: pointer; }
-        .search-box { width: 100%; padding: 12px; margin-top: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-top: 10px; }
-        .card { background: white; padding: 12px; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); padding: 20px; z-index: 1000; overflow-y: auto; }
+        .card { background: white; padding: 10px; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); padding: 20px; z-index: 1000; }
         .modal-content { background: white; padding: 20px; border-radius: 10px; max-width: 400px; margin: auto; }
-        input, select { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        input, select { width: 100%; padding: 8px; margin: 5px 0; }
     </style>
 </head>
 <body>
 
 <div class="panel">
     <h3>WMS Pro</h3>
-    <button class="btn-scan" onclick="startScanner()">📷 Escanear Código</button>
-    <button class="btn-sync" onclick="sync()">🔄 Sincronizar</button>
-    <input type="text" id="search" class="search-box" placeholder="🔍 Buscar..." onkeyup="render()">
+    <button onclick="sync()">🔄 Sincronizar</button>
 </div>
-
-<div id="reader" style="display:none"></div>
 <div id="grid" class="grid"></div>
 
 <div id="modal" class="modal">
     <div class="modal-content">
-        <h3>Editar</h3>
+        <h3>Editar Ubicación</h3>
         <input type="hidden" id="idx">
         Tipo: <select id="tipoUbi" onchange="toggleUbi()">
             <option value="Rack">Rack</option>
             <option value="Temporal">Temporal</option>
         </select>
-        <div id="divRack">Rack:<input type="number" id="eR"> Pos:<input type="number" id="eP"> Niv:<input type="number" id="eN"></div>
-        <div id="divTemp" style="display:none;">Patio:<input type="text" id="ePatio"> Piso:<input type="text" id="ePiso"> Pasillo:<input type="text" id="ePasillo"></div>
-        SKU:<input type="text" id="eS"> LPN:<input type="text" id="eL"> Vencimiento:<input type="date" id="eF">
-        <button onclick="save()" style="background:#3498db; color:white; padding:10px; width:100%; border:none; margin-top:10px;">Guardar</button>
+        <div id="divRack">Rack:<input type="number" id="eR">Pos:<input type="number" id="eP">Niv:<input type="number" id="eN"></div>
+        <div id="divTemp" style="display:none;">Patio:<input type="text" id="ePatio">Piso:<input type="text" id="ePiso">Pasillo:<input type="text" id="ePasillo"></div>
+        SKU:<input type="text" id="eS"> LPN:<input type="text" id="eL">
+        <button onclick="save()">Guardar</button>
     </div>
 </div>
 
@@ -50,29 +42,24 @@
     let data = [];
 
     async function sync() {
-        try {
-            const r = await fetch(URL);
-            data = await r.json();
-            render();
-            alert("Sincronizado");
-        } catch(e) { alert("Error: " + e); }
+        const r = await fetch(URL);
+        data = await r.json();
+        render();
+    }
+
+    function render() {
+        const g = document.getElementById('grid');
+        g.innerHTML = '';
+        for(let i=1; i < data.length; i++) {
+            let row = data[i];
+            g.innerHTML += `<div class="card" onclick="edit(${i})"><strong>${row[0]?'R'+row[0]:'P:'+row[6]}</strong><br>SKU: ${row[3]}</div>`;
+        }
     }
 
     function toggleUbi() {
         let t = document.getElementById('tipoUbi').value;
         document.getElementById('divRack').style.display = t === 'Rack' ? 'block' : 'none';
         document.getElementById('divTemp').style.display = t === 'Temporal' ? 'block' : 'none';
-    }
-
-    function render() {
-        const q = document.getElementById('search').value.toLowerCase();
-        let filtrado = data.slice(1).filter(r => r.some(c => String(c).toLowerCase().includes(q)));
-        const g = document.getElementById('grid');
-        g.innerHTML = '';
-        filtrado.forEach(row => {
-            let idx = data.findIndex(d => d[3] === row[3] && d[4] === row[4]);
-            g.innerHTML += `<div class="card" onclick="edit(${idx})"><strong>${row[0]? 'R'+row[0]:'P:'+row[6]}</strong><br>SKU: ${row[3]}</div>`;
-        });
     }
 
     function edit(i) {
@@ -82,17 +69,17 @@
         document.getElementById('eN').value = data[i][2] || "";
         document.getElementById('eS').value = data[i][3] || "";
         document.getElementById('eL').value = data[i][4] || "";
-        document.getElementById('eF').value = data[i][5] ? new Date(data[i][5]).toISOString().split('T')[0] : "";
         document.getElementById('ePatio').value = data[i][6] || "";
         document.getElementById('ePiso').value = data[i][7] || "";
         document.getElementById('ePasillo').value = data[i][8] || "";
+        document.getElementById('tipoUbi').value = data[i][0] ? "Rack" : "Temporal";
+        toggleUbi();
         document.getElementById('modal').style.display = 'block';
     }
 
     async function save() {
-        let i = document.getElementById('idx').value;
-        let nData = [document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, document.getElementById('eS').value, document.getElementById('eL').value, document.getElementById('eF').value, document.getElementById('ePatio').value, document.getElementById('ePiso').value, document.getElementById('ePasillo').value];
-        if (i === "") data.push(nData); else data[parseInt(i)] = nData;
+        let i = parseInt(document.getElementById('idx').value);
+        data[i] = [document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, document.getElementById('eS').value, document.getElementById('eL').value, data[i][5], document.getElementById('ePatio').value, document.getElementById('ePiso').value, document.getElementById('ePasillo').value];
         await fetch(URL, { method:'POST', body: JSON.stringify({ datos: data }) });
         document.getElementById('modal').style.display = 'none';
         sync();
