@@ -22,7 +22,7 @@
     <button class="btn" style="background:#e67e22" onclick="startScanner()">📷 Escanear y Editar</button>
     <div id="reader" style="display:none; width: 100%;"></div>
     <button class="btn" style="background:#27ae60" onclick="sync()">🔄 Sincronizar</button>
-    <input type="text" id="search" class="search-box" placeholder="🔍 Buscar (Rack, SKU, LPN)..." onkeyup="filterData()">
+    <input type="text" id="search" class="search-box" placeholder="🔍 Buscar..." onkeyup="filterData()">
 </div>
 
 <div id="grid" class="grid"></div>
@@ -31,10 +31,21 @@
     <div class="modal-content">
         <h3>Gestionar Registro</h3>
         <input type="hidden" id="idx">
-        <select id="tipoUbi"><option>Rack</option><option>Temporal</option></select>
-        <input type="text" id="eR" placeholder="Rack">
-        <input type="text" id="eP" placeholder="Posición">
-        <input type="text" id="eN" placeholder="Nivel">
+        <label>Tipo:</label>
+        <select id="tipoUbi" onchange="toggleUbi()">
+            <option value="Rack">Rack</option>
+            <option value="Temporal">Temporal</option>
+        </select>
+        <div id="divRack">
+            <input type="text" id="eR" placeholder="Rack">
+            <input type="text" id="eP" placeholder="Posición">
+            <input type="text" id="eN" placeholder="Nivel">
+        </div>
+        <div id="divTemp" style="display:none;">
+            <input type="text" id="ePatio" placeholder="Patio">
+            <input type="text" id="ePiso" placeholder="Piso">
+            <input type="text" id="ePasillo" placeholder="Pasillo">
+        </div>
         <input type="text" id="eS" placeholder="SKU">
         <input type="text" id="eL" placeholder="LPN">
         <input type="date" id="eVen">
@@ -46,53 +57,57 @@
 <script>
     const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; 
     let data = [];
-
     window.onload = () => sync();
 
     async function sync() {
-        const r = await fetch(URL);
-        data = await r.json();
+        data = await (await fetch(URL)).json();
         render(data);
     }
 
     function render(items) {
-        const g = document.getElementById('grid');
-        g.innerHTML = '';
+        const g = document.getElementById('grid'); g.innerHTML = '';
         for(let i=1; i < items.length; i++) {
-            g.innerHTML += `<div class="card" onclick="edit(${i})">
-                <strong>Rack: ${items[i][0]}</strong><br>
-                SKU: ${items[i][3]}<br>LPN: ${items[i][4]}
-            </div>`;
+            g.innerHTML += `<div class="card" onclick="edit(${i})"><strong>LPN: ${items[i][4]}</strong><br>SKU: ${items[i][3]}</div>`;
         }
     }
 
-    function filterData() {
-        let q = document.getElementById('search').value.toLowerCase();
-        let f = data.filter((row, i) => i > 0 && row.join(' ').toLowerCase().includes(q));
-        render([data[0], ...f]);
+    function toggleUbi() {
+        let t = document.getElementById('tipoUbi').value;
+        document.getElementById('divRack').style.display = t === 'Rack' ? 'block' : 'none';
+        document.getElementById('divTemp').style.display = t === 'Temporal' ? 'block' : 'none';
+    }
+
+    function startScanner() {
+        document.getElementById('reader').style.display = 'block';
+        let h = new Html5Qrcode("reader");
+        h.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
+            h.stop(); document.getElementById('reader').style.display = 'none';
+            let i = data.findIndex(r => r[4] == text);
+            if(i !== -1) edit(i); else { document.getElementById('idx').value="nuevo"; document.getElementById('eL').value=text; document.getElementById('modal').style.display='block'; }
+        });
     }
 
     function edit(i) {
         document.getElementById('idx').value = i;
-        document.getElementById('eR').value = data[i][0];
-        document.getElementById('eP').value = data[i][1];
-        document.getElementById('eN').value = data[i][2];
-        document.getElementById('eS').value = data[i][3];
-        document.getElementById('eL').value = data[i][4];
-        document.getElementById('eVen').value = data[i][5];
-        document.getElementById('modal').style.display = 'block';
+        document.getElementById('eR').value = data[i][0]; document.getElementById('eP').value = data[i][1];
+        document.getElementById('eN').value = data[i][2]; document.getElementById('eS').value = data[i][3];
+        document.getElementById('eL').value = data[i][4]; document.getElementById('eVen').value = data[i][5];
+        document.getElementById('ePatio').value = data[i][6] || ""; document.getElementById('ePiso').value = data[i][7] || "";
+        document.getElementById('ePasillo').value = data[i][8] || "";
+        document.getElementById('tipoUbi').value = data[i][0] ? "Rack" : "Temporal";
+        toggleUbi(); document.getElementById('modal').style.display = 'block';
     }
 
     async function save() {
         let i = document.getElementById('idx').value;
-        let fila = [document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, document.getElementById('eS').value, document.getElementById('eL').value, document.getElementById('eVen').value];
+        let fila = [document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, document.getElementById('eS').value, document.getElementById('eL').value, document.getElementById('eVen').value, document.getElementById('ePatio').value, document.getElementById('ePiso').value, document.getElementById('ePasillo').value];
         if (i === "nuevo") data.push(fila); else data[parseInt(i)] = fila;
         await fetch(URL, { method: 'POST', body: JSON.stringify({ datos: data.slice(1), fila: fila }) });
-        document.getElementById('modal').style.display = 'none';
-        sync();
+        document.getElementById('modal').style.display = 'none'; sync();
     }
     
     function cancelar() { document.getElementById('modal').style.display = 'none'; }
+    function filterData() { let q = document.getElementById('search').value.toLowerCase(); let f = data.filter((r, i) => i > 0 && r.join(' ').toLowerCase().includes(q)); render([data[0], ...f]); }
 </script>
 </body>
 </html>
