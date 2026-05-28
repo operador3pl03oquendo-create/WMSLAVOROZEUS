@@ -8,7 +8,8 @@
     <style>
         body { font-family: sans-serif; background: #f4f7f6; padding: 10px; }
         .panel { background: #2c3e50; color: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; }
-        .btn-scan { background: #e67e22; border: none; padding: 15px; width: 100%; color: white; font-weight: bold; border-radius: 8px; cursor: pointer; }
+        .btn-scan { background: #e67e22; border: none; padding: 12px; width: 100%; color: white; font-weight: bold; border-radius: 8px; cursor: pointer; }
+        .btn-sync { background: #27ae60; border: none; padding: 10px; width: 100%; color: white; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 10px; }
         .search-box { width: 100%; padding: 12px; margin-top: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-top: 10px; }
         .card { background: white; padding: 12px; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
@@ -22,6 +23,7 @@
 <div class="panel">
     <h3>WMS Pro</h3>
     <button class="btn-scan" onclick="startScanner()">📷 Escanear Código</button>
+    <button class="btn-sync" onclick="sync()">🔄 Sincronizar</button>
     <input type="text" id="search" class="search-box" placeholder="🔍 Buscar SKU, LPN o Rack..." onkeyup="render()">
 </div>
 
@@ -59,7 +61,6 @@
             row.some(cell => String(cell).toLowerCase().includes(q))
         );
         
-        // Ordenar por fecha de vencimiento (índice 5)
         filtrado.sort((a, b) => new Date(a[5]) - new Date(b[5]));
 
         const g = document.getElementById('grid');
