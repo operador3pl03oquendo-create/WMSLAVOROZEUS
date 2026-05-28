@@ -34,6 +34,7 @@
         Niv:<input type="number" id="eN">
         SKU:<input type="text" id="eS">
         LPN:<input type="text" id="eL">
+        Fecha Ingreso:<input type="date" id="eF">
         <button onclick="save()">Guardar Cambios</button>
         <button onclick="document.getElementById('modal').style.display='none'" style="background:#95a5a6; margin-top:5px;">Cancelar</button>
     </div>
@@ -44,11 +45,9 @@
     let data = [];
 
     async function sync() {
-        try {
-            const r = await fetch(URL);
-            data = await r.json();
-            render();
-        } catch(e) { alert("Error al conectar con Sheets. Verifica el nombre de la pestaña."); }
+        const r = await fetch(URL);
+        data = await r.json();
+        render();
     }
     
     function render() {
@@ -71,6 +70,7 @@
         document.getElementById('eN').value = data[i][2];
         document.getElementById('eS').value = data[i][3];
         document.getElementById('eL').value = data[i][4];
+        document.getElementById('eF').value = data[i][5] || '';
         document.getElementById('modal').style.display = 'block';
     }
     
@@ -83,20 +83,21 @@
         let nN = document.getElementById('eN').value;
         let nS = document.getElementById('eS').value;
         let nL = document.getElementById('eL').value;
+        let nF = document.getElementById('eF').value;
         
-        data[i] = [nR, nP, nN, nS, nL, data[i][5]];
+        data[i] = [nR, nP, nN, nS, nL, nF];
         let ubiNue = `R${nR}-P${nP}-N${nN}`;
         
         await fetch(URL, { 
             method:'POST', 
             body: JSON.stringify({
                 datos: data,
-                movimiento: { rack: nR, ubiAnt: ubiAnt, ubiNue: ubiNue, sku: nS, lpn: nL }
+                movimiento: { rack: nR, ubiAnt: ubiAnt, ubiNue: ubiNue, sku: nS, lpn: nL, fechaIng: nF }
             })
         });
         document.getElementById('modal').style.display = 'none';
         sync();
-        alert("Guardado correctamente.");
+        alert("Guardado exitosamente.");
     }
     sync();
 </script>
