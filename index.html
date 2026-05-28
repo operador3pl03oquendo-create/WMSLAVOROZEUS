@@ -10,6 +10,8 @@
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); padding: 20px; z-index: 1000; }
         .modal-content { background: white; padding: 20px; border-radius: 10px; max-width: 400px; margin: auto; }
         input, select { width: 100%; padding: 8px; margin: 5px 0; box-sizing: border-box; }
+        .btn-g { background:#27ae60; color:white; border:none; padding:10px; width:100%; cursor:pointer; }
+        .btn-c { background:#e74c3c; color:white; border:none; padding:10px; width:100%; margin-top:5px; cursor:pointer; }
     </style>
 </head>
 <body>
@@ -27,12 +29,13 @@
             <div id="divRack">Rack:<input type="number" id="eR">Pos:<input type="number" id="eP">Niv:<input type="number" id="eN"></div>
             <div id="divTemp" style="display:none;">Patio:<input type="text" id="ePatio">Piso:<input type="text" id="ePiso">Pasillo:<input type="text" id="ePasillo"></div>
             SKU:<input type="text" id="eS"> LPN:<input type="text" id="eL">
-            <button onclick="save()" style="background:#27ae60; color:white; border:none; padding:10px; width:100%;">Guardar</button>
+            <button class="btn-g" onclick="save()">Guardar</button>
+            <button class="btn-c" onclick="cancelar()">Cancelar</button>
         </div>
     </div>
 
 <script>
-    const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; //
+    const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; 
     let data = [];
 
     async function sync() {
@@ -70,6 +73,8 @@
         document.getElementById('modal').style.display = 'block';
     }
 
+    function cancelar() { document.getElementById('modal').style.display = 'none'; }
+
     async function save() {
         let i = parseInt(document.getElementById('idx').value);
         data[i] = [
@@ -78,6 +83,7 @@
             document.getElementById('ePatio').value, document.getElementById('ePiso').value, document.getElementById('ePasillo').value
         ];
         await fetch(URL, { method: 'POST', body: JSON.stringify({ datos: data.slice(1) }) });
+        alert("Guardado correctamente y registrado en Historial");
         document.getElementById('modal').style.display = 'none';
         sync();
     }
