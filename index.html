@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WMS Pro</title>
+    <title>WMS Pro - Operativo</title>
     <style>
         body { font-family: sans-serif; background: #f4f7f6; padding: 10px; }
         .panel { background: #2c3e50; color: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; }
@@ -34,14 +34,14 @@
         Niv:<input type="number" id="eN">
         SKU:<input type="text" id="eS">
         LPN:<input type="text" id="eL">
-        Fecha Ingreso:<input type="date" id="eF">
+        Fecha Vencimiento:<input type="date" id="eF">
         <button onclick="save()">Guardar Cambios</button>
         <button onclick="document.getElementById('modal').style.display='none'" style="background:#95a5a6; margin-top:5px;">Cancelar</button>
     </div>
 </div>
 
 <script>
-    const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec";
+    const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; 
     let data = [];
 
     async function sync() {
@@ -49,7 +49,6 @@
         data = await r.json();
         render();
     }
-    
     function render() {
         const b = document.getElementById('filtro').value.toLowerCase();
         const g = document.getElementById('grid');
@@ -62,7 +61,6 @@
             }
         }
     }
-    
     function edit(i) {
         document.getElementById('idx').value = i;
         document.getElementById('eR').value = data[i][0];
@@ -73,7 +71,6 @@
         document.getElementById('eF').value = data[i][5] || '';
         document.getElementById('modal').style.display = 'block';
     }
-    
     async function save() {
         let i = parseInt(document.getElementById('idx').value);
         let ubiAnt = `R${data[i][0]}-P${data[i][1]}-N${data[i][2]}`;
@@ -92,12 +89,12 @@
             method:'POST', 
             body: JSON.stringify({
                 datos: data,
-                movimiento: { rack: nR, ubiAnt: ubiAnt, ubiNue: ubiNue, sku: nS, lpn: nL, fechaIng: nF }
+                movimiento: { rack: nR, ubiAnt: ubiAnt, ubiNue: ubiNue, sku: nS, lpn: nL, fechaVenc: nF }
             })
         });
         document.getElementById('modal').style.display = 'none';
         sync();
-        alert("Guardado exitosamente.");
+        alert("¡Guardado correctamente!");
     }
     sync();
 </script>
