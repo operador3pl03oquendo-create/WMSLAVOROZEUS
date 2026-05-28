@@ -10,13 +10,13 @@
         .panel { background: #2c3e50; color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
         .btn-scan { background: #e67e22; border: none; padding: 15px; color: white; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
         .btn-sync { background: #27ae60; border: none; padding: 15px; color: white; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .search-box { width: 100%; padding: 15px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        .search-box { width: 100%; padding: 15px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
         .card { background: white; padding: 15px; border-radius: 10px; border: 1px solid #ddd; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); padding: 20px; z-index: 1000; overflow-y: auto; }
         .modal-content { background: white; padding: 25px; border-radius: 15px; max-width: 400px; margin: auto; }
-        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
-        .btn-g { background: #3498db; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; }
+        .btn-g { background: #3498db; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; cursor: pointer; }
         .btn-c { background: #e74c3c; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; cursor: pointer; margin-top: 10px; }
     </style>
 </head>
@@ -25,7 +25,7 @@
 <div class="panel">
     <h2>WMS Pro</h2>
     <button class="btn-scan" onclick="startScanner()">📷 Escanear y Editar</button>
-    <div id="reader" style="display:none; width: 100%;"></div>
+    <div id="reader" style="width: 100%;"></div>
     <button class="btn-sync" onclick="sync()">🔄 Sincronizar</button>
     <input type="text" id="search" class="search-box" placeholder="🔍 Buscar..." onkeyup="filterData()">
 </div>
@@ -53,7 +53,7 @@
 <script>
     const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; 
     let data = [];
-    let html5QrcodeScanner;
+    let html5QrCode;
 
     async function sync() {
         const r = await fetch(URL);
@@ -74,34 +74,19 @@
         }
     }
 
-    function filterData() {
-        let q = document.getElementById('search').value.toLowerCase();
-        let filtered = data.filter((item, index) => index === 0 || item.join(' ').toLowerCase().includes(q));
-        render(filtered);
-    }
-
     function startScanner() {
-        document.getElementById('reader').style.display = 'block';
-        html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
-        html5QrcodeScanner.render((decodedText) => {
+        html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decodedText) => {
             document.getElementById('search').value = decodedText;
-            filterData();
-            // Buscar si el código escaneado coincide con algún LPN (columna E, índice 4)
+            // Buscar índice por LPN (columna E, índice 4)
             let foundIdx = data.findIndex(row => row[4] == decodedText);
             if(foundIdx !== -1) {
-                edit(foundIdx); // Abre el modal automáticamente
+                edit(foundIdx);
+                html5QrCode.stop();
             } else {
                 alert("LPN no encontrado: " + decodedText);
             }
-            html5QrcodeScanner.clear();
-            document.getElementById('reader').style.display = 'none';
         });
-    }
-
-    function toggleUbi() {
-        let t = document.getElementById('tipoUbi').value;
-        document.getElementById('divRack').style.display = t === 'Rack' ? 'block' : 'none';
-        document.getElementById('divTemp').style.display = t === 'Temporal' ? 'block' : 'none';
     }
 
     function edit(i) {
@@ -116,11 +101,13 @@
         document.getElementById('ePiso').value = data[i][7] || "";
         document.getElementById('ePasillo').value = data[i][8] || "";
         document.getElementById('tipoUbi').value = data[i][0] ? "Rack" : "Temporal";
-        toggleUbi();
         document.getElementById('modal').style.display = 'block';
     }
 
-    function cancelar() { document.getElementById('modal').style.display = 'none'; }
+    function cancelar() { 
+        document.getElementById('modal').style.display = 'none'; 
+        if(html5QrCode) html5QrCode.stop(); 
+    }
 
     async function save() {
         let i = parseInt(document.getElementById('idx').value);
