@@ -26,7 +26,7 @@
     <div class="controls">
         <button class="btn-scan" onclick="startScanner()">📷 Escanear Código</button>
         <button class="btn-sync" onclick="sync()">🔄 Sincronizar</button>
-        <input type="text" id="search" class="search-box" placeholder="🔍 Buscar (Rack, Patio, SKU, LPN)..." onkeyup="render()">
+        <input type="text" id="search" class="search-box" placeholder="🔍 Buscar (Rack, SKU, LPN)..." onkeyup="render()">
     </div>
 </div>
 
@@ -35,12 +35,14 @@
 
 <div id="modal" class="modal">
     <div class="modal-content">
-        <h3>Asignar Ubicación</h3>
+        <h3>Editar Ubicación</h3>
         <input type="hidden" id="idx">
-        Tipo: <select id="tipoUbi" onchange="toggleUbi()">
+        <label>Tipo de Ubicación:</label>
+        <select id="tipoUbi" onchange="toggleUbi()">
             <option value="Rack">Rack</option>
-            <option value="Temporal">Ubicación Temporal (Patio/Piso/Pasillo)</option>
+            <option value="Temporal">Temporal (Patio/Piso/Pasillo)</option>
         </select>
+        
         <div id="divRack">
             Rack:<input type="number" id="eR"> Pos:<input type="number" id="eP"> Niv:<input type="number" id="eN">
         </div>
@@ -49,15 +51,18 @@
             Piso:<input type="text" id="ePiso">
             Pasillo:<input type="text" id="ePasillo">
         </div>
+        
         SKU:<input type="text" id="eS">
         LPN:<input type="text" id="eL">
         Vencimiento:<input type="date" id="eF">
-        <button onclick="save()" style="background:#3498db; color:white; padding:10px; width:100%; border:none; margin-top:10px;">Guardar</button>
+        
+        <button onclick="save()" style="background:#3498db; color:white; padding:10px; width:100%; border:none; margin-top:10px; cursor:pointer;">Guardar</button>
+        <button onclick="document.getElementById('modal').style.display='none'" style="margin-top:5px; width:100%; padding:10px; cursor:pointer;">Cancelar</button>
     </div>
 </div>
 
 <script>
-    const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; 
+    const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; //
     let data = [];
 
     function toggleUbi() {
@@ -80,9 +85,8 @@
 
         const g = document.getElementById('grid');
         g.innerHTML = '';
-        filtrado.forEach(row => {
+        filtrado.forEach((row, index) => {
             let originalIdx = data.findIndex(d => d[3] === row[3] && d[4] === row[4]);
-            // Si el rack está vacío, mostramos el patio
             let ubi = row[0] ? `R${row[0]}-P${row[1]}-N${row[2]}` : `Patio: ${row[6] || 'N/A'}`;
             g.innerHTML += `<div class="card" onclick="edit(${originalIdx})">
                 <strong>${ubi}</strong><br>
@@ -91,29 +95,47 @@
         });
     }
 
+    function startScanner() {
+        document.getElementById('reader').style.display = 'block';
+        let scanner = new Html5Qrcode("reader");
+        scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (txt) => {
+            scanner.stop();
+            document.getElementById('reader').style.display = 'none';
+            document.getElementById('idx').value = "";
+            // Si el código empieza con B, lo tomamos como Rack
+            if (txt.startsWith("B")) {
+                let p = txt.split('-');
+                document.getElementById('eR').value = p[1] || "";
+                document.getElementById('eP').value = p[2] || "";
+                document.getElementById('eN').value = p[3] || "";
+                document.getElementById('tipoUbi').value = "Rack";
+            } else { 
+                document.getElementById('eL').value = txt; 
+            }
+            toggleUbi();
+            document.getElementById('modal').style.display = 'block';
+        });
+    }
+
     function edit(i) {
         document.getElementById('idx').value = i;
+        document.getElementById('eS').value = data[i][3] || "";
+        document.getElementById('eL').value = data[i][4] || "";
+        document.getElementById('eF').value = data[i][5] ? new Date(data[i][5]).toISOString().split('T')[0] : "";
         document.getElementById('eR').value = data[i][0] || "";
         document.getElementById('eP').value = data[i][1] || "";
         document.getElementById('eN').value = data[i][2] || "";
-        document.getElementById('eS').value = data[i][3] || "";
-        document.getElementById('eL').value = data[i][4] || "";
         document.getElementById('ePatio').value = data[i][6] || "";
         document.getElementById('ePiso').value = data[i][7] || "";
         document.getElementById('ePasillo').value = data[i][8] || "";
+
+        let tipo = (data[i][0] && data[i][0] !== "") ? "Rack" : "Temporal";
+        document.getElementById('tipoUbi').value = tipo;
+        toggleUbi();
         document.getElementById('modal').style.display = 'block';
     }
 
     async function save() {
         let i = document.getElementById('idx').value;
-        // Guardamos en un array expandido [Rack, Pos, Niv, SKU, LPN, Fecha, Patio, Piso, Pasillo]
-        let nData = [document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, document.getElementById('eS').value, document.getElementById('eL').value, document.getElementById('eF').value, document.getElementById('ePatio').value, document.getElementById('ePiso').value, document.getElementById('ePasillo').value];
-        if (i === "") data.push(nData); else data[parseInt(i)] = nData;
-        await fetch(URL, { method:'POST', body: JSON.stringify({ datos: data }) });
-        document.getElementById('modal').style.display = 'none';
-        sync();
-    }
-    sync();
-</script>
-</body>
-</html>
+        let nData = [
+            document.getElementById('e
