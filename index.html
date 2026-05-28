@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WMS Pro</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; padding: 10px; }
         .panel { background: #2c3e50; color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
@@ -12,7 +13,7 @@
         .search-box { width: 100%; padding: 15px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
         .card { background: white; padding: 15px; border-radius: 10px; border: 1px solid #ddd; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); padding: 20px; z-index: 1000; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); padding: 20px; z-index: 1000; overflow-y: auto; }
         .modal-content { background: white; padding: 25px; border-radius: 15px; max-width: 400px; margin: auto; }
         input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
         .btn-g { background: #3498db; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; cursor: pointer; font-weight: bold; }
@@ -23,7 +24,8 @@
 
 <div class="panel">
     <h2>WMS Pro</h2>
-    <button class="btn-scan" onclick="alert('Funcionalidad de escaneo aquí')">📷 Escanear Código</button>
+    <button class="btn-scan" onclick="document.getElementById('reader').style.display='block'; startScanner();">📷 Escanear Código</button>
+    <div id="reader"></div>
     <button class="btn-sync" onclick="sync()">🔄 Sincronizar</button>
     <input type="text" id="search" class="search-box" placeholder="🔍 Buscar (Rack, SKU, LPN)..." onkeyup="filterData()">
 </div>
@@ -76,6 +78,14 @@
             return item.join(' ').toLowerCase().includes(q);
         });
         render(filtered);
+    }
+
+    function startScanner() {
+        new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 }).render((data) => {
+            document.getElementById('search').value = data;
+            filterData();
+            document.getElementById('reader').style.display = 'none';
+        });
     }
 
     function toggleUbi() {
