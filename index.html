@@ -8,19 +8,7 @@
     <style>
         body { font-family: sans-serif; padding: 10px; background: #f4f7f6; margin: 0; }
         .panel { background: #2c3e50; color: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; }
-        
-        /* Barra de búsqueda optimizada para móvil */
-        .search-box { 
-            width: 100%; 
-            padding: 15px; 
-            margin: 10px 0; 
-            border: 2px solid #3498db; 
-            border-radius: 8px; 
-            box-sizing: border-box; 
-            font-size: 16px; 
-            display: block; 
-        }
-
+        .search-box { width: 100%; padding: 15px; margin: 10px 0; border: 2px solid #3498db; border-radius: 8px; box-sizing: border-box; font-size: 16px; display: block; }
         .btn { padding: 15px; margin-top: 5px; width: 100%; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; }
         .card { background: white; padding: 15px; margin: 8px 0; border-radius: 8px; border-left: 5px solid #3498db; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); padding: 20px; z-index: 1000; overflow-y: auto; }
@@ -33,7 +21,7 @@
     <button class="btn" style="background:#e67e22" onclick="startScanner()">📷 Escanear y Editar</button>
     <div id="reader" style="width: 100%; display:none;"></div>
     <button class="btn" style="background:#27ae60" onclick="sync()">🔄 Sincronizar</button>
-    <input type="text" id="busqueda" class="search-box" placeholder="🔍 Buscar SKU o LPN..." onkeyup="filtrar()">
+    <input type="text" id="busqueda" class="search-box" placeholder="🔍 Buscar SKU, LPN o Vencimiento..." onkeyup="filtrar()">
 </div>
 <div id="grid"></div>
 
@@ -62,13 +50,21 @@
     function render(items) {
         let g = document.getElementById('grid'); g.innerHTML = '';
         for(let i=1; i<items.length; i++) {
-            g.innerHTML += `<div class="card" onclick="edit(${i})"><strong>Ubicación: ${items[i][0] || items[i][6]}</strong><br>SKU: ${items[i][3]} | LPN: ${items[i][4]}</div>`;
+            g.innerHTML += `<div class="card" onclick="edit(${i})">
+                <strong>Ubicación: ${items[i][0] || items[i][6]}</strong><br>
+                SKU: ${items[i][3]} | LPN: ${items[i][4]}<br>
+                <small style="color:#7f8c8d">Vencimiento: ${items[i][5]}</small>
+            </div>`;
         }
     }
 
     function filtrar() {
         let q = document.getElementById('busqueda').value.toLowerCase();
-        let filtrados = data.filter((r, i) => i > 0 && (r[3].toString().toLowerCase().includes(q) || r[4].toString().toLowerCase().includes(q)));
+        let filtrados = data.filter((r, i) => i > 0 && (
+            r[3].toString().toLowerCase().includes(q) || 
+            r[4].toString().toLowerCase().includes(q) ||
+            r[5].toString().toLowerCase().includes(q)
+        ));
         render([data[0], ...filtrados]);
     }
 
