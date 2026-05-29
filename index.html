@@ -2,17 +2,17 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>WMS Pro</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { font-family: sans-serif; padding: 10px; background: #f4f7f6; }
-        .dashboard { background: #34495e; color: white; padding: 10px; border-radius: 8px; margin-bottom: 10px; text-align: center; }
-        .panel { background: #2c3e50; padding: 15px; border-radius: 10px; }
-        .btn { padding: 15px; margin: 5px 0; width: 100%; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; }
-        .search-box { width: 100%; padding: 15px; margin: 10px 0; border: 2px solid #3498db; border-radius: 8px; box-sizing: border-box; }
-        .card { background: white; padding: 15px; margin: 8px 0; border-radius: 8px; border-left: 10px solid #ccc; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); padding: 20px; z-index: 1000; }
-        input { width: 100%; padding: 10px; margin: 5px 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 10px; background: #f8f9fa; margin: 0; }
+        .dashboard { background: #2c3e50; color: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; text-align: center; font-weight: bold; }
+        .btn { padding: 18px; margin: 8px 0; width: 100%; border: none; border-radius: 12px; color: white; font-weight: bold; font-size: 16px; cursor: pointer; touch-action: manipulation; }
+        .search-box { width: 100%; padding: 16px; margin: 10px 0; border: 2px solid #3498db; border-radius: 12px; font-size: 16px; box-sizing: border-box; }
+        .card { background: white; padding: 16px; margin: 10px 0; border-radius: 12px; border-left: 8px solid #ccc; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .modal { display: none; position: fixed; inset: 0; background: white; padding: 20px; z-index: 2000; overflow-y: auto; }
+        input { width: 100%; padding: 16px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
     </style>
 </head>
 <body>
@@ -28,15 +28,13 @@
 <div id="grid"></div>
 
 <div id="modal" class="modal">
-    <div style="background:white; padding:20px; border-radius:10px;">
-        <h3>Gestionar Registro</h3>
-        <input type="hidden" id="idx" value="nuevo">
-        <input id="eR" placeholder="Rack"><input id="eP" placeholder="Posición"><input id="eN" placeholder="Nivel">
-        <input id="eS" placeholder="SKU" list="skuList"><datalist id="skuList"></datalist>
-        <input id="eL" placeholder="LPN"><input type="date" id="eVen">
-        <button class="btn" style="background:#3498db" onclick="guardar()">Guardar</button>
-        <button class="btn" style="background:#95a5a6" onclick="cancelar()">Cancelar</button>
-    </div>
+    <h3>Gestionar Registro</h3>
+    <input type="hidden" id="idx" value="nuevo">
+    <input id="eR" placeholder="Rack"><input id="eP" placeholder="Posición"><input id="eN" placeholder="Nivel">
+    <input id="eS" placeholder="SKU" list="skuList"><datalist id="skuList"></datalist>
+    <input id="eL" placeholder="LPN"><input type="date" id="eVen">
+    <button class="btn" style="background:#3498db" onclick="guardar()">Guardar</button>
+    <button class="btn" style="background:#95a5a6" onclick="cancelar()">Cancelar</button>
 </div>
 
 <script>
@@ -107,7 +105,7 @@
         });
     }
 
-    function edit(i) { document.getElementById('idx').value = i; document.getElementById('eR').value = data[i][0]; document.getElementById('eP').value = data[i][1]; document.getElementById('eN').value = data[i][2]; document.getElementById('eS').value = data[i][3]; document.getElementById('eL').value = data[i][4]; document.getElementById('eVen').value = data[i][5]; document.getElementById('modal').style.display = 'block'; }
+    function edit(i) { document.getElementById('idx').value = i; document.getElementById('eR').value = data[i][0]; document.getElementById('eP').value = data[i][1]; document.getElementById('eN').value = data[i][2]; document.getElementById('eS').value = data[i][3]; document.getElementById('eL').value = data[i][4]; document.getElementById('eVen').value = data[i][5] ? new Date(data[i][5]).toISOString().split('T')[0] : ""; document.getElementById('modal').style.display = 'block'; }
     function cancelar() { document.getElementById('modal').style.display = 'none'; }
     window.onload = sync;
 </script>
