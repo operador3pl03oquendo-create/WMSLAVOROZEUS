@@ -21,26 +21,17 @@
     <button class="btn" style="background:#e67e22" onclick="startScanner()">📷 Escanear y Editar</button>
     <div id="reader" style="width: 100%; display:none;"></div>
     <button class="btn" style="background:#27ae60" onclick="sync()">🔄 Sincronizar</button>
-    <input type="text" id="busqueda" class="search-box" placeholder="🔍 Buscar por SKU o LPN..." onkeyup="filtrar()">
+    <input type="text" id="busqueda" class="search-box" placeholder="🔍 Buscar SKU o LPN..." onkeyup="filtrar()">
 </div>
-
 <div id="grid"></div>
 
 <div id="modal" class="modal">
     <div style="background:white; padding:20px; border-radius:10px;">
         <h3>Gestionar Registro</h3>
-        <input type="hidden" id="idx">
-        <select id="tipoUbi" onchange="toggleUbi()">
-            <option value="Rack">Rack</option>
-            <option value="Temporal">Temporal</option>
-        </select>
-        <div id="divRack">
-            <input id="eR" placeholder="Rack"><input id="eP" placeholder="Posición"><input id="eN" placeholder="Nivel">
-        </div>
-        <div id="divTemp" style="display:none;">
-            <input id="ePatio" placeholder="Patio"><input id="ePiso" placeholder="Piso"><input id="ePasillo" placeholder="Pasillo">
-        </div>
+        <input type="hidden" id="idx" value="nuevo">
+        <input id="eR" placeholder="Rack"><input id="eP" placeholder="Posición"><input id="eN" placeholder="Nivel">
         <input id="eS" placeholder="SKU"><input id="eL" placeholder="LPN"><input type="date" id="eVen">
+        <input id="ePatio" placeholder="Patio"><input id="ePiso" placeholder="Piso"><input id="ePasillo" placeholder="Pasillo">
         <button class="btn" style="background:#3498db" onclick="guardar()">Guardar</button>
         <button class="btn" style="background:#e74c3c" onclick="cancelar()">Cancelar</button>
     </div>
@@ -53,23 +44,8 @@
     async function sync() { 
         let res = await fetch(URL);
         data = await res.json(); 
-        render(data); 
-    }
-
-    function render(items) {
         let g = document.getElementById('grid'); g.innerHTML = '';
-        for(let i=1; i<items.length; i++) {
-            g.innerHTML += `<div class="card" onclick="edit(${i})">
-                <strong>Ubicación: ${items[i][0] || items[i][6]}</strong><br>
-                SKU: ${items[i][3]} | LPN: ${items[i][4]}
-            </div>`;
-        }
-    }
-
-    function filtrar() {
-        let q = document.getElementById('busqueda').value.toLowerCase();
-        let filtrados = data.filter((r, i) => i > 0 && (r[3].toString().toLowerCase().includes(q) || r[4].toString().toLowerCase().includes(q)));
-        render([data[0], ...filtrados]);
+        for(let i=1; i<data.length; i++) g.innerHTML += `<div class="card" onclick="edit(${i})"><strong>Ubicación: ${data[i][0]}</strong><br>SKU: ${data[i][3]} | LPN: ${data[i][4]}</div>`;
     }
 
     function startScanner() {
@@ -77,6 +53,7 @@
         let h = new Html5Qrcode("reader");
         h.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
             h.stop(); document.getElementById('reader').style.display = 'none';
+            document.getElementById('idx').value = "nuevo";
             document.getElementById('eL').value = text;
             document.getElementById('modal').style.display = 'block';
         });
@@ -84,33 +61,15 @@
 
     async function guardar() {
         let i = document.getElementById('idx').value;
-        let fila = [
-            document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, 
-            document.getElementById('eS').value, document.getElementById('eL').value, document.getElementById('eVen').value, 
-            document.getElementById('ePatio').value, document.getElementById('ePiso').value, document.getElementById('ePasillo').value
-        ];
+        let fila = [document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, document.getElementById('eS').value, document.getElementById('eL').value, document.getElementById('eVen').value, document.getElementById('ePatio').value, document.getElementById('ePiso').value, document.getElementById('ePasillo').value];
         
-        if (i == "nuevo") data.push(fila); else data[parseInt(i)] = fila;
+        if (i === "nuevo") data.push(fila); else data[parseInt(i)] = fila;
 
-        let res = await fetch(URL, {
-            method: 'POST',
-            body: JSON.stringify({ datos: data.slice(1), fila: fila })
-        });
-        
+        let res = await fetch(URL, { method: 'POST', body: JSON.stringify({ datos: data.slice(1), fila: fila }) });
         let msg = await res.text();
-        if(msg == "SUCCESS") {
-            alert("Guardado correctamente");
-            document.getElementById('modal').style.display = 'none';
-            sync();
-        } else {
-            alert("Error del servidor: " + msg);
-        }
-    }
-
-    function toggleUbi() {
-        let t = document.getElementById('tipoUbi').value;
-        document.getElementById('divRack').style.display = t=='Rack'?'block':'none';
-        document.getElementById('divTemp').style.display = t=='Temporal'?'block':'none';
+        
+        if(msg === "SUCCESS") { alert("¡Guardado!"); document.getElementById('modal').style.display = 'none'; sync(); }
+        else { alert("Error: " + msg); }
     }
 
     function edit(i) {
