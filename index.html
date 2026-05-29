@@ -49,7 +49,6 @@
         let datalist = document.getElementById('skuList');
         datalist.innerHTML = '';
         json.skus.forEach(s => { let o = document.createElement('option'); o.value = s; datalist.appendChild(o); });
-        
         let hoy = new Date();
         let vencidos = data.slice(1).filter(r => r[5] && new Date(r[5]) < hoy).length;
         document.getElementById('resumen').innerHTML = `📦 Items: ${data.length-1} | 🔴 Vencidos: ${vencidos}`;
@@ -60,8 +59,7 @@
         let g = document.getElementById('grid'); g.innerHTML = '';
         let hoy = new Date();
         for(let i=1; i<items.length; i++) {
-            let v = items[i][5]; 
-            let venc = v ? new Date(v) : null;
+            let v = items[i][5]; let venc = v ? new Date(v) : null;
             let diff = (venc - hoy) / (1000 * 60 * 60 * 24);
             let color = (venc && diff < 0) ? "#e74c3c" : ((venc && diff <= 30) ? "#f1c40f" : "#2ecc71");
             g.innerHTML += `<div class="card" onclick="edit(${i})" style="border-left-color: ${color}">
@@ -77,6 +75,17 @@
         render([data[0], ...filtrados]);
     }
 
+    function startScanner() {
+        document.getElementById('reader').style.display = 'block';
+        let h = new Html5Qrcode("reader");
+        h.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (t) => {
+            h.stop(); document.getElementById('reader').style.display = 'none';
+            let idx = data.findIndex(r => r[4] == t);
+            if(idx !== -1) { if(confirm("LPN ya registrado. ¿Editar?")) edit(idx); }
+            else { document.getElementById('idx').value = "nuevo"; document.getElementById('eL').value = t; document.getElementById('eS').value = ""; document.getElementById('modal').style.display = 'block'; }
+        });
+    }
+
     async function guardar() {
         if(!document.getElementById('eS').value) return alert("SKU obligatorio");
         let i = document.getElementById('idx').value;
@@ -84,12 +93,6 @@
         if (i === "nuevo") data.push(fila); else data[parseInt(i)] = fila;
         await fetch(URL, { method: 'POST', body: JSON.stringify({ datos: data.slice(1), fila: fila, user: userName }) });
         document.getElementById('modal').style.display = 'none'; sync();
-    }
-
-    function startScanner() {
-        document.getElementById('reader').style.display = 'block';
-        let h = new Html5Qrcode("reader");
-        h.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (t) => { h.stop(); document.getElementById('reader').style.display = 'none'; document.getElementById('eL').value = t; document.getElementById('modal').style.display = 'block'; });
     }
 
     async function escanearSalida() {
@@ -101,7 +104,7 @@
             if(row && confirm("¿Despachar LPN "+t+"?")) {
                 await fetch(URL, { method: 'POST', body: JSON.stringify({ accion: "SALIDA", fila: row, user: userName }) });
                 sync();
-            }
+            } else { alert("LPN no encontrado"); }
         });
     }
 
