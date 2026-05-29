@@ -50,10 +50,11 @@
     function render(items) {
         let g = document.getElementById('grid'); g.innerHTML = '';
         for(let i=1; i<items.length; i++) {
+            let fechaLimpia = items[i][5] ? items[i][5].toString().split('T')[0] : "";
             g.innerHTML += `<div class="card" onclick="edit(${i})">
                 <strong>Ubicación: ${items[i][0] || items[i][6]}</strong><br>
                 SKU: ${items[i][3]} | LPN: ${items[i][4]}<br>
-                <small style="color:#7f8c8d">Vencimiento: ${items[i][5]}</small>
+                <small style="color:#7f8c8d">Vencimiento: ${fechaLimpia}</small>
             </div>`;
         }
     }
