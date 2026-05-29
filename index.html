@@ -9,10 +9,9 @@
         body { font-family: sans-serif; padding: 10px; background: #f4f7f6; }
         .panel { background: #2c3e50; color: white; padding: 15px; border-radius: 10px; }
         .btn { padding: 15px; margin-top: 10px; width: 100%; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; }
-        .search-box { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
-        .card { background: white; padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 5px solid #3498db; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .card { background: white; padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 5px solid #3498db; }
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); padding: 20px; z-index: 1000; overflow-y: auto; }
-        input, select { width: 100%; padding: 12px; margin: 5px 0; box-sizing: border-box; }
+        input { width: 100%; padding: 12px; margin: 5px 0; box-sizing: border-box; }
     </style>
 </head>
 <body>
@@ -21,7 +20,6 @@
     <button class="btn" style="background:#e67e22" onclick="startScanner()">📷 Escanear y Editar</button>
     <div id="reader" style="width: 100%; display:none;"></div>
     <button class="btn" style="background:#27ae60" onclick="sync()">🔄 Sincronizar</button>
-    <input type="text" id="busqueda" class="search-box" placeholder="🔍 Buscar SKU o LPN..." onkeyup="filtrar()">
 </div>
 <div id="grid"></div>
 
@@ -45,7 +43,7 @@
         let res = await fetch(URL);
         data = await res.json(); 
         let g = document.getElementById('grid'); g.innerHTML = '';
-        for(let i=1; i<data.length; i++) g.innerHTML += `<div class="card" onclick="edit(${i})"><strong>Ubicación: ${data[i][0]}</strong><br>SKU: ${data[i][3]} | LPN: ${data[i][4]}</div>`;
+        for(let i=1; i<data.length; i++) g.innerHTML += `<div class="card" onclick="edit(${i})"><strong>Ubicación: ${data[i][0] || data[i][6]}</strong><br>SKU: ${data[i][3]} | LPN: ${data[i][4]}</div>`;
     }
 
     function startScanner() {
@@ -53,22 +51,25 @@
         let h = new Html5Qrcode("reader");
         h.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
             h.stop(); document.getElementById('reader').style.display = 'none';
-            document.getElementById('idx').value = "nuevo";
-            document.getElementById('eL').value = text;
-            document.getElementById('modal').style.display = 'block';
+            let index = data.findIndex(row => row[4] == text);
+            if (index !== -1) {
+                if(confirm("El LPN " + text + " ya existe. ¿Desea editarlo?")) edit(index);
+            } else {
+                document.getElementById('idx').value = "nuevo";
+                document.getElementById('eL').value = text;
+                document.getElementById('modal').style.display = 'block';
+            }
         });
     }
 
     async function guardar() {
         let i = document.getElementById('idx').value;
         let fila = [document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, document.getElementById('eS').value, document.getElementById('eL').value, document.getElementById('eVen').value, document.getElementById('ePatio').value, document.getElementById('ePiso').value, document.getElementById('ePasillo').value];
-        
         if (i === "nuevo") data.push(fila); else data[parseInt(i)] = fila;
 
         let res = await fetch(URL, { method: 'POST', body: JSON.stringify({ datos: data.slice(1), fila: fila }) });
         let msg = await res.text();
-        
-        if(msg === "SUCCESS") { alert("¡Guardado!"); document.getElementById('modal').style.display = 'none'; sync(); }
+        if(msg === "SUCCESS") { alert("¡Guardado correctamente!"); document.getElementById('modal').style.display = 'none'; sync(); }
         else { alert("Error: " + msg); }
     }
 
