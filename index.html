@@ -9,8 +9,9 @@
         body { font-family: sans-serif; padding: 10px; background: #f4f7f6; }
         .panel { background: #2c3e50; color: white; padding: 15px; border-radius: 10px; }
         .btn { padding: 15px; margin-top: 10px; width: 100%; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; }
-        .card { background: white; padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 6px solid #3498db; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); padding: 20px; z-index: 1000; overflow-y: auto; }
+        .search-box { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
+        .card { background: white; padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 5px solid #3498db; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); padding: 20px; z-index: 1000; overflow-y: auto; }
         input, select { width: 100%; padding: 12px; margin: 5px 0; box-sizing: border-box; }
     </style>
 </head>
@@ -18,8 +19,11 @@
 
 <div class="panel">
     <button class="btn" style="background:#e67e22" onclick="startScanner()">📷 Escanear y Editar</button>
+    <div id="reader" style="display:none; width: 100%;"></div>
     <button class="btn" style="background:#27ae60" onclick="sync()">🔄 Sincronizar</button>
+    <input type="text" id="busqueda" class="search-box" placeholder="🔍 Buscar por SKU o LPN..." onkeyup="filtrar()">
 </div>
+
 <div id="grid"></div>
 
 <div id="modal" class="modal">
@@ -40,15 +44,15 @@
 <script>
     const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; 
     let data = [];
-    async function sync() { data = await (await fetch(URL)).json(); render(); }
-    function render() {
+    async function sync() { data = await (await fetch(URL)).json(); render(data); }
+    function render(items) {
         let g = document.getElementById('grid'); g.innerHTML = '';
-        for(let i=1; i<data.length; i++) g.innerHTML += `<div class="card" onclick="edit(${i})"><strong>Ubicación: ${data[i][0] || data[i][6]}</strong><br>SKU: ${data[i][3]} | LPN: ${data[i][4]}</div>`;
+        for(let i=1; i<items.length; i++) g.innerHTML += `<div class="card" onclick="edit(${i})"><strong>Ubicación: ${items[i][0] || items[i][6]}</strong><br>SKU: ${items[i][3]} | LPN: ${items[i][4]}</div>`;
     }
-    function toggleUbi() {
-        let t = document.getElementById('tipoUbi').value;
-        document.getElementById('divRack').style.display = t=='Rack'?'block':'none';
-        document.getElementById('divTemp').style.display = t=='Temporal'?'block':'none';
+    function filtrar() {
+        let q = document.getElementById('busqueda').value.toLowerCase();
+        let f = data.filter((r, i) => i > 0 && (r[3].toString().toLowerCase().includes(q) || r[4].toString().toLowerCase().includes(q)));
+        render([data[0], ...f]);
     }
     async function save() {
         let i = document.getElementById('idx').value;
@@ -56,6 +60,19 @@
         if (i == "nuevo") data.push(fila); else data[parseInt(i)] = fila;
         await fetch(URL, { method: 'POST', body: JSON.stringify({ datos: data.slice(1), fila: fila }) });
         alert("Sincronizado"); document.getElementById('modal').style.display = 'none'; sync();
+    }
+    function startScanner() {
+        document.getElementById('reader').style.display = 'block';
+        let h = new Html5Qrcode("reader");
+        h.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
+            h.stop(); document.getElementById('reader').style.display = 'none';
+            document.getElementById('eL').value = text; document.getElementById('modal').style.display = 'block';
+        });
+    }
+    function toggleUbi() {
+        let t = document.getElementById('tipoUbi').value;
+        document.getElementById('divRack').style.display = t=='Rack'?'block':'none';
+        document.getElementById('divTemp').style.display = t=='Temporal'?'block':'none';
     }
     function edit(i) {
         document.getElementById('idx').value = i;
@@ -65,7 +82,6 @@
         document.getElementById('modal').style.display = 'block';
     }
     function cancelar() { document.getElementById('modal').style.display = 'none'; }
-    function startScanner() { /* Tu lógica de escáner aquí */ }
 </script>
 </body>
 </html>
