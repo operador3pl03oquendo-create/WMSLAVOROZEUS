@@ -7,21 +7,23 @@
     <style>
         body { font-family: sans-serif; padding: 10px; background: #f4f7f6; }
         .dashboard { background: #34495e; color: white; padding: 10px; border-radius: 8px; margin-bottom: 10px; text-align: center; }
-        .panel { background: #2c3e50; color: white; padding: 15px; border-radius: 10px; }
+        .panel { background: #2c3e50; padding: 15px; border-radius: 10px; }
         .btn { padding: 15px; margin: 5px 0; width: 100%; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; }
-        .card { background: white; padding: 15px; margin: 8px 0; border-radius: 8px; border-left: 5px solid #3498db; }
+        .search-box { width: 100%; padding: 15px; margin: 10px 0; border: 2px solid #3498db; border-radius: 8px; box-sizing: border-box; }
+        .card { background: white; padding: 15px; margin: 8px 0; border-radius: 8px; border-left: 10px solid #ccc; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); padding: 20px; z-index: 1000; }
         input { width: 100%; padding: 10px; margin: 5px 0; box-sizing: border-box; }
     </style>
 </head>
 <body>
 
-<div id="resumen" class="dashboard">Conectando...</div>
+<div id="resumen" class="dashboard">Cargando...</div>
 <div class="panel">
     <button class="btn" style="background:#e67e22" onclick="startScanner()">📷 Ingreso</button>
     <button class="btn" style="background:#c0392b" onclick="escanearSalida()">📦 Despachar</button>
-    <div id="reader" style="width: 100%; display:none;"></div>
     <button class="btn" style="background:#27ae60" onclick="sync()">🔄 Sincronizar</button>
+    <input type="text" id="busqueda" class="search-box" placeholder="🔍 Buscar SKU o LPN..." onkeyup="filtrar()">
+    <div id="reader" style="width: 100%; display:none;"></div>
 </div>
 <div id="grid"></div>
 
@@ -43,7 +45,6 @@
     localStorage.setItem('user', userName);
 
     async function sync() {
-        document.getElementById('resumen').innerText = "Sincronizando...";
         let res = await fetch(URL);
         let json = await res.json();
         data = json.inventario;
@@ -59,9 +60,23 @@
 
     function render(items) {
         let g = document.getElementById('grid'); g.innerHTML = '';
+        let hoy = new Date();
         for(let i=1; i<items.length; i++) {
-            g.innerHTML += `<div class="card" onclick="edit(${i})"><strong>LPN: ${items[i][4]}</strong><br>SKU: ${items[i][3]}<br>Venc: ${items[i][5] ? items[i][5].toString().split('T')[0] : ""}</div>`;
+            let v = items[i][5]; 
+            let venc = v ? new Date(v) : null;
+            let diff = (venc - hoy) / (1000 * 60 * 60 * 24);
+            let color = (venc && diff < 0) ? "#e74c3c" : ((venc && diff <= 30) ? "#f1c40f" : "#2ecc71");
+            g.innerHTML += `<div class="card" onclick="edit(${i})" style="border-left-color: ${color}">
+                <strong>LPN: ${items[i][4]}</strong><br>SKU: ${items[i][3]}<br>
+                <small>Venc: <b style="color:${color}">${v ? v.toString().split('T')[0] : "N/A"}</b></small>
+            </div>`;
         }
+    }
+
+    function filtrar() {
+        let q = document.getElementById('busqueda').value.toLowerCase();
+        let filtrados = data.filter((r, i) => i > 0 && ((r[3] && r[3].toString().toLowerCase().includes(q)) || (r[4] && r[4].toString().toLowerCase().includes(q))));
+        render([data[0], ...filtrados]);
     }
 
     async function guardar() {
@@ -72,18 +87,18 @@
         await fetch(URL, { method: 'POST', body: JSON.stringify({ datos: data.slice(1), fila: fila, user: userName }) });
         document.getElementById('modal').style.display = 'none'; sync();
     }
-    
+
     function startScanner() {
         document.getElementById('reader').style.display = 'block';
         let h = new Html5Qrcode("reader");
-        h.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (t) => { h.stop(); document.getElementById('eL').value = t; document.getElementById('modal').style.display = 'block'; });
+        h.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (t) => { h.stop(); document.getElementById('reader').style.display = 'none'; document.getElementById('eL').value = t; document.getElementById('modal').style.display = 'block'; });
     }
 
     async function escanearSalida() {
         document.getElementById('reader').style.display = 'block';
         let h = new Html5Qrcode("reader");
         h.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, async (t) => {
-            h.stop();
+            h.stop(); document.getElementById('reader').style.display = 'none';
             let row = data.find(r => r[4] == t);
             if(row && confirm("¿Despachar LPN "+t+"?")) {
                 await fetch(URL, { method: 'POST', body: JSON.stringify({ accion: "SALIDA", fila: row, user: userName }) });
@@ -92,7 +107,7 @@
         });
     }
 
-    function edit(i) { /* ... lógica de edición ... */ document.getElementById('modal').style.display = 'block'; }
+    function edit(i) { document.getElementById('idx').value = i; document.getElementById('eR').value = data[i][0]; document.getElementById('eP').value = data[i][1]; document.getElementById('eN').value = data[i][2]; document.getElementById('eS').value = data[i][3]; document.getElementById('eL').value = data[i][4]; document.getElementById('eVen').value = data[i][5]; document.getElementById('modal').style.display = 'block'; }
     function cancelar() { document.getElementById('modal').style.display = 'none'; }
     window.onload = sync;
 </script>
