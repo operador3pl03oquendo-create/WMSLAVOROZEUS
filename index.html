@@ -15,7 +15,6 @@
     </style>
 </head>
 <body>
-
 <div id="resumen" class="dashboard">Cargando...</div>
 <div class="panel">
     <button class="btn" style="background:#e67e22" onclick="startScanner()">📷 Ingreso</button>
@@ -34,7 +33,6 @@
     <button class="btn" style="background:#3498db" onclick="guardar()">Guardar</button>
     <button class="btn" style="background:#95a5a6" onclick="cancelar()">Cancelar</button>
 </div>
-
 <div id="reader" style="width: 100%; display:none;"></div>
 
 <script>
@@ -48,7 +46,6 @@
         let datalist = document.getElementById('skuList');
         datalist.innerHTML = '';
         json.skus.forEach(s => { let o = document.createElement('option'); o.value = s; datalist.appendChild(o); });
-        
         let hoy = new Date();
         let vencidos = data.slice(1).filter(r => r[5] && new Date(r[5]) < hoy).length;
         document.getElementById('resumen').innerHTML = `📦 Items: ${data.length-1} | 🔴 Vencidos: ${vencidos}`;
@@ -64,9 +61,7 @@
             let diff = (venc - hoy) / (1000 * 60 * 60 * 24);
             let color = (venc && diff < 0) ? "#e74c3c" : ((venc && diff <= 30) ? "#f1c40f" : "#2ecc71");
             g.innerHTML += `<div class="card" onclick="edit(${i})" style="border-left-color: ${color}">
-                <strong>LPN: ${items[i][4]}</strong><br>
-                SKU: ${items[i][3]}<br>
-                Ubicación: <b>${loc}</b><br>
+                <strong>LPN: ${items[i][4] || "VACÍO"}</strong><br>SKU: ${items[i][3] || "N/A"}<br>Ubicación: <b>${loc}</b><br>
                 <small>Venc: <b style="color:${color}">${v ? v.toString().split('T')[0] : "N/A"}</b></small>
             </div>`;
         }
@@ -96,11 +91,24 @@
         });
     }
 
+    async function escanearSalida() {
+        document.getElementById('reader').style.display = 'block';
+        let h = new Html5Qrcode("reader");
+        h.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, async (t) => {
+            h.stop(); document.getElementById('reader').style.display = 'none';
+            let idx = data.findIndex(r => r[4] == t);
+            if(idx !== -1 && confirm("¿Despachar LPN "+t+"?")) {
+                await fetch(URL, { method: 'POST', body: JSON.stringify({ accion: "SALIDA", fila: data[idx], user: userName }) });
+                sync();
+            } else { alert("LPN no encontrado"); }
+        });
+    }
+
     function edit(i) {
         document.getElementById('idx').value = i;
-        document.getElementById('eR').value = data[i][0]; document.getElementById('eP').value = data[i][1];
-        document.getElementById('eN').value = data[i][2]; document.getElementById('eS').value = data[i][3];
-        document.getElementById('eL').value = data[i][4]; document.getElementById('eVen').value = data[i][5] ? new Date(data[i][5]).toISOString().split('T')[0] : "";
+        document.getElementById('eR').value = data[i][0] || ""; document.getElementById('eP').value = data[i][1] || "";
+        document.getElementById('eN').value = data[i][2] || ""; document.getElementById('eS').value = data[i][3] || "";
+        document.getElementById('eL').value = data[i][4] || ""; document.getElementById('eVen').value = data[i][5] ? new Date(data[i][5]).toISOString().split('T')[0] : "";
         document.getElementById('modal').style.display = 'block';
     }
 
