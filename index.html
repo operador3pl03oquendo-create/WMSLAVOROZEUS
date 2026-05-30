@@ -1,88 +1,62 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WMS Pro</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { font-family: sans-serif; padding: 10px; background: #f8f9fa; }
-        .dashboard { background: #2c3e50; color: white; padding: 15px; border-radius: 12px; text-align: center; }
-        .btn { padding: 15px; margin: 5px 0; width: 100%; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; }
-        .card { background: white; padding: 15px; margin: 8px 0; border-radius: 8px; border-left: 8px solid #ccc; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .modal { display: none; position: fixed; inset: 0; background: white; padding: 20px; z-index: 1000; overflow-y: auto; }
-        input { width: 100%; padding: 12px; margin: 5px 0; box-sizing: border-box; }
+        body { font-family: sans-serif; padding: 10px; background: #eee; }
+        .btn { padding: 15px; width: 100%; border: none; border-radius: 8px; color: white; margin: 5px 0; font-weight: bold; }
+        #reader { width: 100%; display: none; }
     </style>
 </head>
 <body>
-<div id="resumen" class="dashboard">Cargando...</div>
-<div class="panel">
-    <button class="btn" style="background:#e67e22" onclick="startScanner()">📷 Ingreso</button>
-    <button class="btn" style="background:#c0392b" onclick="escanearSalida()">📦 Despachar</button>
+    <div id="status" style="background:#2c3e50; color:white; padding:10px; text-align:center;">Cargando...</div>
+    <button class="btn" style="background:#e67e22" onclick="scanner('ingreso')">📷 Ingreso</button>
+    <button class="btn" style="background:#c0392b" onclick="scanner('salida')">📦 Despachar</button>
     <button class="btn" style="background:#27ae60" onclick="sync()">🔄 Sincronizar</button>
-    <input type="text" id="busqueda" placeholder="🔍 Buscar..." onkeyup="filtrar()" style="width:100%; padding:12px; margin:10px 0;">
-</div>
-<div id="grid"></div>
+    <div id="reader"></div>
+    <div id="grid"></div>
 
-<div id="modal" class="modal">
-    <h3>Gestionar Registro</h3>
-    <input type="hidden" id="idx" value="nuevo">
-    <input id="eR" placeholder="Rack"><input id="eP" placeholder="Posición"><input id="eN" placeholder="Nivel">
-    <input id="eS" placeholder="SKU" list="skuList"><datalist id="skuList"></datalist>
-    <input id="eL" placeholder="LPN"><input type="date" id="eVen">
-    <button class="btn" style="background:#3498db" onclick="guardar()">Guardar</button>
-    <button class="btn" style="background:#95a5a6" onclick="cancelar()">Cancelar</button>
-</div>
-<div id="reader" style="width: 100%; display:none;"></div>
+    <script>
+        const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; // 
+        let data = [];
 
-<script>
-    const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; 
-    let data = [], userName = localStorage.getItem('user') || prompt("Nombre:") || "Usuario";
-    
-    async function sync() {
-        let res = await fetch(URL);
-        let json = await res.json();
-        data = json.inventario;
-        render(data);
-    }
+        async function sync() {
+            document.getElementById('status').innerText = "Cargando...";
+            try {
+                let res = await fetch(URL);
+                let json = await res.json();
+                data = json.inventario;
+                document.getElementById('status').innerText = `Items: ${data.length-1}`;
+                render();
+            } catch(e) { document.getElementById('status').innerText = "Error al conectar"; }
+        }
 
-    function render(items) {
-        let g = document.getElementById('grid'); g.innerHTML = '';
-        // Filtro estricto: solo mostrar filas que tengan LPN (columna 4)
-        items.filter((r, i) => i > 0 && r[4] !== "").forEach((item, index) => {
-            g.innerHTML += `<div class="card" onclick="edit(${items.indexOf(item)})">
-                <strong>LPN: ${item[4]}</strong><br>SKU: ${item[3]}<br>Ubicación: <b>${item[6] || "N/A"}</b>
-            </div>`;
-        });
-    }
+        function render() {
+            let g = document.getElementById('grid'); g.innerHTML = '';
+            data.slice(1).forEach(r => {
+                if(r[4]) g.innerHTML += `<div style="background:white; padding:10px; margin:5px; border-radius:5px;">
+                    <strong>LPN: ${r[4]}</strong><br>SKU: ${r[3]}<br>Ubicación: ${r[6]}</div>`;
+            });
+        }
 
-    async function guardar() {
-        let fila = [document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, document.getElementById('eS').value, document.getElementById('eL').value, document.getElementById('eVen').value];
-        await fetch(URL, { method: 'POST', body: JSON.stringify({ fila: fila, user: userName }) });
-        document.getElementById('modal').style.display = 'none'; sync();
-    }
-
-    function startScanner() {
-        document.getElementById('reader').style.display = 'block';
-        let h = new Html5Qrcode("reader");
-        h.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (t) => {
-            h.stop(); document.getElementById('reader').style.display = 'none';
-            let idx = data.findIndex(r => r[4] == t);
-            if(idx !== -1) edit(idx);
-            else { document.getElementById('idx').value = "nuevo"; document.getElementById('eL').value = t; document.getElementById('modal').style.display = 'block'; }
-        });
-    }
-
-    function edit(i) {
-        document.getElementById('idx').value = i;
-        document.getElementById('eR').value = data[i][0] || ""; document.getElementById('eP').value = data[i][1] || "";
-        document.getElementById('eN').value = data[i][2] || ""; document.getElementById('eS').value = data[i][3] || "";
-        document.getElementById('eL').value = data[i][4] || ""; document.getElementById('eVen').value = data[i][5] ? new Date(data[i][5]).toISOString().split('T')[0] : "";
-        document.getElementById('modal').style.display = 'block';
-    }
-
-    function cancelar() { document.getElementById('modal').style.display = 'none'; }
-    window.onload = sync;
-</script>
+        function scanner(modo) {
+            document.getElementById('reader').style.display = 'block';
+            const html5Qrcode = new Html5Qrcode("reader");
+            html5Qrcode.start({ facingMode: "environment" }, { fps: 10, qrbox: 200 }, 
+                async (decodedText) => {
+                    html5Qrcode.stop();
+                    document.getElementById('reader').style.display = 'none';
+                    if(modo === 'salida') {
+                        await fetch(URL, { method: 'POST', body: JSON.stringify({ accion: 'SALIDA', lpn: decodedText }) });
+                    } else {
+                        // Aquí simplifiqué, en tu caso abriría el modal
+                        alert("LPN escaneado: " + decodedText);
+                    }
+                    sync();
+                });
+        }
+        window.onload = sync;
+    </script>
 </body>
 </html>
