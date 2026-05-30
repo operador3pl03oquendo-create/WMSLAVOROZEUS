@@ -2,17 +2,16 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WMS Pro</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 10px; background: #f8f9fa; margin: 0; }
-        .dashboard { background: #2c3e50; color: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; text-align: center; font-weight: bold; }
-        .btn { padding: 18px; margin: 8px 0; width: 100%; border: none; border-radius: 12px; color: white; font-weight: bold; font-size: 16px; cursor: pointer; touch-action: manipulation; }
-        .search-box { width: 100%; padding: 16px; margin: 10px 0; border: 2px solid #3498db; border-radius: 12px; font-size: 16px; box-sizing: border-box; }
-        .card { background: white; padding: 16px; margin: 10px 0; border-radius: 12px; border-left: 8px solid #ccc; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .modal { display: none; position: fixed; inset: 0; background: white; padding: 20px; z-index: 2000; overflow-y: auto; }
-        input { width: 100%; padding: 16px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
+        body { font-family: sans-serif; padding: 10px; background: #f8f9fa; }
+        .dashboard { background: #2c3e50; color: white; padding: 15px; border-radius: 12px; text-align: center; }
+        .btn { padding: 15px; margin: 5px 0; width: 100%; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; }
+        .card { background: white; padding: 15px; margin: 8px 0; border-radius: 8px; border-left: 8px solid #ccc; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .modal { display: none; position: fixed; inset: 0; background: white; padding: 20px; z-index: 1000; overflow-y: auto; }
+        input { width: 100%; padding: 12px; margin: 5px 0; box-sizing: border-box; }
     </style>
 </head>
 <body>
@@ -22,8 +21,7 @@
     <button class="btn" style="background:#e67e22" onclick="startScanner()">📷 Ingreso</button>
     <button class="btn" style="background:#c0392b" onclick="escanearSalida()">📦 Despachar</button>
     <button class="btn" style="background:#27ae60" onclick="sync()">🔄 Sincronizar</button>
-    <input type="text" id="busqueda" class="search-box" placeholder="🔍 Buscar SKU o LPN..." onkeyup="filtrar()">
-    <div id="reader" style="width: 100%; display:none;"></div>
+    <input type="text" id="busqueda" placeholder="🔍 Buscar SKU o LPN..." onkeyup="filtrar()" style="width:100%; padding:12px; margin:10px 0;">
 </div>
 <div id="grid"></div>
 
@@ -37,11 +35,12 @@
     <button class="btn" style="background:#95a5a6" onclick="cancelar()">Cancelar</button>
 </div>
 
+<div id="reader" style="width: 100%; display:none;"></div>
+
 <script>
     const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; 
-    let data = [], userName = localStorage.getItem('user') || prompt("Tu nombre:") || "Usuario";
-    localStorage.setItem('user', userName);
-
+    let data = [], userName = localStorage.getItem('user') || prompt("Nombre:") || "Usuario";
+    
     async function sync() {
         let res = await fetch(URL);
         let json = await res.json();
@@ -49,6 +48,7 @@
         let datalist = document.getElementById('skuList');
         datalist.innerHTML = '';
         json.skus.forEach(s => { let o = document.createElement('option'); o.value = s; datalist.appendChild(o); });
+        
         let hoy = new Date();
         let vencidos = data.slice(1).filter(r => r[5] && new Date(r[5]) < hoy).length;
         document.getElementById('resumen').innerHTML = `📦 Items: ${data.length-1} | 🔴 Vencidos: ${vencidos}`;
@@ -59,11 +59,14 @@
         let g = document.getElementById('grid'); g.innerHTML = '';
         let hoy = new Date();
         for(let i=1; i<items.length; i++) {
-            let v = items[i][5]; let venc = v ? new Date(v) : null;
+            let v = items[i][5]; let loc = items[i][6] || "Sin ubicación";
+            let venc = v ? new Date(v) : null;
             let diff = (venc - hoy) / (1000 * 60 * 60 * 24);
             let color = (venc && diff < 0) ? "#e74c3c" : ((venc && diff <= 30) ? "#f1c40f" : "#2ecc71");
             g.innerHTML += `<div class="card" onclick="edit(${i})" style="border-left-color: ${color}">
-                <strong>LPN: ${items[i][4]}</strong><br>SKU: ${items[i][3]}<br>
+                <strong>LPN: ${items[i][4]}</strong><br>
+                SKU: ${items[i][3]}<br>
+                Ubicación: <b>${loc}</b><br>
                 <small>Venc: <b style="color:${color}">${v ? v.toString().split('T')[0] : "N/A"}</b></small>
             </div>`;
         }
@@ -75,40 +78,32 @@
         render([data[0], ...filtrados]);
     }
 
+    async function guardar() {
+        let i = document.getElementById('idx').value;
+        let fila = [document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, document.getElementById('eS').value, document.getElementById('eL').value, document.getElementById('eVen').value];
+        await fetch(URL, { method: 'POST', body: JSON.stringify({ fila: fila, user: userName }) });
+        document.getElementById('modal').style.display = 'none'; sync();
+    }
+
     function startScanner() {
         document.getElementById('reader').style.display = 'block';
         let h = new Html5Qrcode("reader");
         h.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (t) => {
             h.stop(); document.getElementById('reader').style.display = 'none';
             let idx = data.findIndex(r => r[4] == t);
-            if(idx !== -1) { if(confirm("LPN ya registrado. ¿Editar?")) edit(idx); }
-            else { document.getElementById('idx').value = "nuevo"; document.getElementById('eL').value = t; document.getElementById('eS').value = ""; document.getElementById('modal').style.display = 'block'; }
+            if(idx !== -1) edit(idx);
+            else { document.getElementById('idx').value = "nuevo"; document.getElementById('eL').value = t; document.getElementById('modal').style.display = 'block'; }
         });
     }
 
-    async function guardar() {
-        if(!document.getElementById('eS').value) return alert("SKU obligatorio");
-        let i = document.getElementById('idx').value;
-        let fila = [document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, document.getElementById('eS').value, document.getElementById('eL').value, document.getElementById('eVen').value, "", "", ""];
-        if (i === "nuevo") data.push(fila); else data[parseInt(i)] = fila;
-        await fetch(URL, { method: 'POST', body: JSON.stringify({ datos: data.slice(1), fila: fila, user: userName }) });
-        document.getElementById('modal').style.display = 'none'; sync();
+    function edit(i) {
+        document.getElementById('idx').value = i;
+        document.getElementById('eR').value = data[i][0]; document.getElementById('eP').value = data[i][1];
+        document.getElementById('eN').value = data[i][2]; document.getElementById('eS').value = data[i][3];
+        document.getElementById('eL').value = data[i][4]; document.getElementById('eVen').value = data[i][5] ? new Date(data[i][5]).toISOString().split('T')[0] : "";
+        document.getElementById('modal').style.display = 'block';
     }
 
-    async function escanearSalida() {
-        document.getElementById('reader').style.display = 'block';
-        let h = new Html5Qrcode("reader");
-        h.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, async (t) => {
-            h.stop(); document.getElementById('reader').style.display = 'none';
-            let row = data.find(r => r[4] == t);
-            if(row && confirm("¿Despachar LPN "+t+"?")) {
-                await fetch(URL, { method: 'POST', body: JSON.stringify({ accion: "SALIDA", fila: row, user: userName }) });
-                sync();
-            } else { alert("LPN no encontrado"); }
-        });
-    }
-
-    function edit(i) { document.getElementById('idx').value = i; document.getElementById('eR').value = data[i][0]; document.getElementById('eP').value = data[i][1]; document.getElementById('eN').value = data[i][2]; document.getElementById('eS').value = data[i][3]; document.getElementById('eL').value = data[i][4]; document.getElementById('eVen').value = data[i][5] ? new Date(data[i][5]).toISOString().split('T')[0] : ""; document.getElementById('modal').style.display = 'block'; }
     function cancelar() { document.getElementById('modal').style.display = 'none'; }
     window.onload = sync;
 </script>
