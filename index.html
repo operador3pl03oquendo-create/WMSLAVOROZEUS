@@ -4,57 +4,72 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { font-family: sans-serif; padding: 10px; background: #eee; }
-        .btn { padding: 15px; width: 100%; border: none; border-radius: 8px; color: white; margin: 5px 0; font-weight: bold; }
+        body { font-family: sans-serif; padding: 10px; background: #f8f9fa; }
+        .btn { padding: 15px; margin: 5px 0; width: 100%; border: none; border-radius: 8px; color: white; font-weight: bold; }
+        .card { background: white; padding: 15px; margin: 8px 0; border-radius: 8px; border-left: 8px solid #ccc; }
+        .modal { display: none; position: fixed; inset: 0; background: white; padding: 20px; z-index: 1000; }
+        input { width: 100%; padding: 10px; margin: 5px 0; }
         #reader { width: 100%; display: none; }
     </style>
 </head>
 <body>
-    <div id="status" style="background:#2c3e50; color:white; padding:10px; text-align:center;">Cargando...</div>
-    <button class="btn" style="background:#e67e22" onclick="scanner('ingreso')">📷 Ingreso</button>
-    <button class="btn" style="background:#c0392b" onclick="scanner('salida')">📦 Despachar</button>
+    <div id="resumen" style="background:#2c3e50; color:white; padding:15px; border-radius:10px; text-align:center;">Cargando...</div>
+    <button class="btn" style="background:#e67e22" onclick="startScanner('ingreso')">📷 Ingreso</button>
+    <button class="btn" style="background:#c0392b" onclick="startScanner('salida')">📦 Despachar</button>
     <button class="btn" style="background:#27ae60" onclick="sync()">🔄 Sincronizar</button>
     <div id="reader"></div>
     <div id="grid"></div>
 
+    <div id="modal" class="modal">
+        <h3>Gestionar Registro</h3>
+        <input type="hidden" id="idx"><input id="eR" placeholder="Rack"><input id="eP" placeholder="Posición"><input id="eN" placeholder="Nivel">
+        <input id="eS" placeholder="SKU"><input id="eL" placeholder="LPN"><input type="date" id="eVen">
+        <button class="btn" style="background:#3498db" onclick="guardar()">Guardar</button>
+        <button class="btn" style="background:#95a5a6" onclick="document.getElementById('modal').style.display='none'">Cancelar</button>
+    </div>
+
     <script>
-        const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; // 
+        const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; 
         let data = [];
 
         async function sync() {
-            document.getElementById('status').innerText = "Cargando...";
-            try {
-                let res = await fetch(URL);
-                let json = await res.json();
-                data = json.inventario;
-                document.getElementById('status').innerText = `Items: ${data.length-1}`;
-                render();
-            } catch(e) { document.getElementById('status').innerText = "Error al conectar"; }
+            let res = await fetch(URL);
+            let json = await res.json();
+            data = json.inventario;
+            document.getElementById('resumen').innerText = `Items: ${data.length-1}`;
+            render();
         }
 
         function render() {
             let g = document.getElementById('grid'); g.innerHTML = '';
-            data.slice(1).forEach(r => {
-                if(r[4]) g.innerHTML += `<div style="background:white; padding:10px; margin:5px; border-radius:5px;">
-                    <strong>LPN: ${r[4]}</strong><br>SKU: ${r[3]}<br>Ubicación: ${r[6]}</div>`;
+            data.slice(1).forEach((r, i) => {
+                if(r[4]) g.innerHTML += `<div class="card"><strong>LPN: ${r[4]}</strong><br>SKU: ${r[3]}<br>Ubicación: ${r[6]}</div>`;
             });
         }
 
-        function scanner(modo) {
+        function startScanner(modo) {
             document.getElementById('reader').style.display = 'block';
             const html5Qrcode = new Html5Qrcode("reader");
-            html5Qrcode.start({ facingMode: "environment" }, { fps: 10, qrbox: 200 }, 
-                async (decodedText) => {
-                    html5Qrcode.stop();
-                    document.getElementById('reader').style.display = 'none';
+            html5Qrcode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
+                async (t) => {
+                    html5Qrcode.stop(); document.getElementById('reader').style.display = 'none';
                     if(modo === 'salida') {
-                        await fetch(URL, { method: 'POST', body: JSON.stringify({ accion: 'SALIDA', lpn: decodedText }) });
+                        let idx = data.findIndex(r => r[4] == t);
+                        if(idx !== -1) {
+                            await fetch(URL, { method: 'POST', body: JSON.stringify({ accion: 'SALIDA', fila: data[idx] }) });
+                            sync();
+                        }
                     } else {
-                        // Aquí simplifiqué, en tu caso abriría el modal
-                        alert("LPN escaneado: " + decodedText);
+                        document.getElementById('eL').value = t;
+                        document.getElementById('modal').style.display = 'block';
                     }
-                    sync();
                 });
+        }
+
+        async function guardar() {
+            let fila = [document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, document.getElementById('eS').value, document.getElementById('eL').value, document.getElementById('eVen').value];
+            await fetch(URL, { method: 'POST', body: JSON.stringify({ fila: fila }) });
+            document.getElementById('modal').style.display = 'none'; sync();
         }
         window.onload = sync;
     </script>
