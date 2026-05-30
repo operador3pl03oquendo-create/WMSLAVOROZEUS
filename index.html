@@ -2,71 +2,80 @@
 <html lang="es">
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WMS Zeus Pro</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { font-family: sans-serif; padding: 10px; background: #f8f9fa; }
-        .btn { padding: 15px; margin: 5px 0; width: 100%; border: none; border-radius: 8px; color: white; font-weight: bold; }
-        .card { background: white; padding: 15px; margin: 8px 0; border-radius: 8px; border-left: 8px solid #3498db; }
+        :root { --primary: #2c3e50; --accent: #e67e22; --danger: #c0392b; --success: #27ae60; }
+        body { font-family: sans-serif; margin: 0; padding: 10px; background: #f0f2f5; }
+        .container { max-width: 600px; margin: auto; }
+        .dashboard { background: var(--primary); color: white; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 15px; }
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .btn { padding: 18px; border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; font-size: 16px; }
+        .btn-sync { background: var(--success); grid-column: span 2; }
+        .card { background: white; padding: 15px; margin: 10px 0; border-radius: 12px; border-left: 6px solid var(--accent); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        #reader { width: 100%; height: 300px; display: none; margin: 10px 0; border-radius: 10px; overflow: hidden; }
         .modal { display: none; position: fixed; inset: 0; background: white; padding: 20px; z-index: 1000; overflow-y: auto; }
-        #reader { width: 100%; height: 300px; display: none; background: black; }
-        .close-btn { background: red; color: white; padding: 10px; width: 100%; border: none; margin-bottom: 10px; }
+        input { width: 100%; padding: 15px; margin: 5px 0; box-sizing: border-box; border: 1px solid #ddd; border-radius: 8px; }
     </style>
 </head>
 <body>
-    <div id="resumen" style="background:#2c3e50; color:white; padding:15px; text-align:center;">Cargando...</div>
+<div class="container">
+    <div class="dashboard"><h2>WMS Zeus Pro</h2><div id="resumen">Sincronizando...</div></div>
+    <div class="btn-group">
+        <button class="btn" style="background:var(--accent)" onclick="startScanner('ingreso')">📷 Ingreso</button>
+        <button class="btn" style="background:var(--danger)" onclick="startScanner('salida')">📦 Despachar</button>
+        <button class="btn btn-sync" onclick="sync()">🔄 Sincronizar</button>
+    </div>
+    <input type="text" id="busqueda" placeholder="🔍 Buscar SKU o LPN..." onkeyup="filtrar()" style="width:100%; padding:15px; margin-bottom:10px; box-sizing:border-box;">
     <div id="reader"></div>
-    <button id="closeCam" class="close-btn" style="display:none;" onclick="stopScanner()">Cerrar Cámara</button>
-
-    <button class="btn" style="background:#e67e22" onclick="startScanner('ingreso')">📷 Ingreso</button>
-    <button class="btn" style="background:#c0392b" onclick="startScanner('salida')">📦 Despachar</button>
-    <input type="text" id="busqueda" placeholder="🔍 Buscar SKU o LPN..." onkeyup="filtrar()" style="width:100%; padding:12px; margin:10px 0;">
     <div id="grid"></div>
+</div>
 
-    <script>
-        const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; 
-        let data = [];
-        let html5Qrcode;
+<div id="modal" class="modal">
+    <h3>Gestionar Registro</h3>
+    <input id="eR" placeholder="Rack"><input id="eP" placeholder="Posición"><input id="eN" placeholder="Nivel">
+    <input id="eS" placeholder="SKU" list="skuList"><datalist id="skuList"></datalist>
+    <input id="eL" placeholder="LPN"><input type="date" id="eVen">
+    <button class="btn" style="background:var(--accent); width:100%" onclick="guardar()">Guardar</button>
+    <button class="btn" style="background:#95a5a6; width:100%; margin-top:10px" onclick="document.getElementById('modal').style.display='none'">Cancelar</button>
+</div>
 
-        async function sync() {
-            let res = await fetch(URL);
-            let json = await res.json();
-            data = json.inventario;
-            document.getElementById('resumen').innerText = `Total registros: ${data.length-1}`;
-            render(data);
-        }
-
-        function render(items) {
-            let g = document.getElementById('grid'); g.innerHTML = '';
-            // OPTIMIZACIÓN: Solo renderizamos primeros 50 para que no colapse el móvil
-            items.slice(1, 51).forEach((r, i) => {
-                if(r[4]) g.innerHTML += `<div class="card" onclick="edit(${items.indexOf(r)})"><strong>LPN: ${r[4]}</strong><br>SKU: ${r[3]}<br>Loc: ${r[6]}</div>`;
-            });
-        }
-
-        function startScanner(modo) {
-            document.getElementById('reader').style.display = 'block';
-            document.getElementById('closeCam').style.display = 'block';
-            html5Qrcode = new Html5Qrcode("reader");
-            html5Qrcode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, async (t) => {
-                stopScanner();
-                if(modo === 'salida') {
-                    let idx = data.findIndex(r => r[4] == t);
-                    if(idx !== -1) { await fetch(URL, { method: 'POST', body: JSON.stringify({ accion: 'SALIDA', fila: data[idx] }) }); sync(); }
-                } else { alert("Escaneado: " + t); }
-            });
-        }
-
-        function stopScanner() {
-            if(html5Qrcode) html5Qrcode.stop();
-            document.getElementById('reader').style.display = 'none';
-            document.getElementById('closeCam').style.display = 'none';
-        }
-
-        function filtrar() {
-            let q = document.getElementById('busqueda').value.toLowerCase();
-            render(data.filter((r, i) => i == 0 || (r[3] && r[3].toString().toLowerCase().includes(q)) || (r[4] && r[4].toString().toLowerCase().includes(q))));
-        }
-        window.onload = sync;
-    </script>
+<script>
+    const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; //
+    let data = [];
+    async function sync() {
+        let res = await fetch(URL); let json = await res.json(); data = json.inventario;
+        let list = document.getElementById('skuList'); list.innerHTML = '';
+        json.skus.forEach(s => { let o = document.createElement('option'); o.value = s; list.appendChild(o); });
+        document.getElementById('resumen').innerText = `Total: ${data.length-1} items`;
+        render(data);
+    }
+    function render(items) {
+        let g = document.getElementById('grid'); g.innerHTML = '';
+        items.slice(1, 51).forEach((r, i) => { if(r[4]) g.innerHTML += `<div class="card" onclick="edit(${items.indexOf(r)})"><strong>LPN: ${r[4]}</strong><br>SKU: ${r[3]}<br>Ubicación: ${r[6]}</div>`; });
+    }
+    function startScanner(modo) {
+        document.getElementById('reader').style.display = 'block';
+        const h = new Html5Qrcode("reader");
+        h.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, async (t) => {
+            h.stop(); document.getElementById('reader').style.display = 'none';
+            if(modo === 'salida') {
+                let idx = data.findIndex(r => r[4] == t);
+                if(idx !== -1) { await fetch(URL, { method: 'POST', body: JSON.stringify({ accion: 'SALIDA', fila: data[idx] }) }); sync(); }
+                else alert("LPN no encontrado");
+            } else { document.getElementById('eL').value = t; document.getElementById('modal').style.display = 'block'; }
+        });
+    }
+    async function guardar() {
+        let fila = [document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, document.getElementById('eS').value, document.getElementById('eL').value, document.getElementById('eVen').value];
+        await fetch(URL, { method: 'POST', body: JSON.stringify({ fila: fila }) });
+        document.getElementById('modal').style.display = 'none'; sync();
+    }
+    function filtrar() {
+        let q = document.getElementById('busqueda').value.toLowerCase();
+        render(data.filter((r, i) => i == 0 || (r[3] && r[3].toString().toLowerCase().includes(q)) || (r[4] && r[4].toString().toLowerCase().includes(q))));
+    }
+    window.onload = sync;
+</script>
 </body>
 </html>
