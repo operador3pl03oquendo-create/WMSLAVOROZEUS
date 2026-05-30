@@ -1,77 +1,99 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WMS Pro</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body { font-family: sans-serif; padding: 10px; background: #f8f9fa; }
-        .btn { padding: 15px; margin: 5px 0; width: 100%; border: none; border-radius: 8px; color: white; font-weight: bold; }
-        .card { background: white; padding: 15px; margin: 8px 0; border-radius: 8px; border-left: 8px solid #ccc; }
-        .modal { display: none; position: fixed; inset: 0; background: white; padding: 20px; z-index: 1000; }
-        input { width: 100%; padding: 10px; margin: 5px 0; }
+        .dashboard { background: #2c3e50; color: white; padding: 15px; border-radius: 12px; text-align: center; }
+        .btn { padding: 15px; margin: 5px 0; width: 100%; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; }
+        .card { background: white; padding: 15px; margin: 8px 0; border-radius: 8px; border-left: 8px solid #3498db; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .modal { display: none; position: fixed; inset: 0; background: white; padding: 20px; z-index: 1000; overflow-y: auto; }
+        input { width: 100%; padding: 12px; margin: 5px 0; box-sizing: border-box; }
         #reader { width: 100%; display: none; }
     </style>
 </head>
 <body>
-    <div id="resumen" style="background:#2c3e50; color:white; padding:15px; border-radius:10px; text-align:center;">Cargando...</div>
+<div id="resumen" class="dashboard">Cargando...</div>
+<div class="panel">
     <button class="btn" style="background:#e67e22" onclick="startScanner('ingreso')">📷 Ingreso</button>
     <button class="btn" style="background:#c0392b" onclick="startScanner('salida')">📦 Despachar</button>
     <button class="btn" style="background:#27ae60" onclick="sync()">🔄 Sincronizar</button>
-    <div id="reader"></div>
-    <div id="grid"></div>
+    <input type="text" id="busqueda" placeholder="🔍 Buscar SKU o LPN..." onkeyup="filtrar()" style="width:100%; padding:12px; margin:10px 0;">
+</div>
+<div id="reader"></div>
+<div id="grid"></div>
 
-    <div id="modal" class="modal">
-        <h3>Gestionar Registro</h3>
-        <input type="hidden" id="idx"><input id="eR" placeholder="Rack"><input id="eP" placeholder="Posición"><input id="eN" placeholder="Nivel">
-        <input id="eS" placeholder="SKU"><input id="eL" placeholder="LPN"><input type="date" id="eVen">
-        <button class="btn" style="background:#3498db" onclick="guardar()">Guardar</button>
-        <button class="btn" style="background:#95a5a6" onclick="document.getElementById('modal').style.display='none'">Cancelar</button>
-    </div>
+<div id="modal" class="modal">
+    <h3>Gestionar Registro</h3>
+    <input type="hidden" id="idx">
+    <input id="eR" placeholder="Rack"><input id="eP" placeholder="Posición"><input id="eN" placeholder="Nivel">
+    <input id="eS" placeholder="SKU" list="skuList"><datalist id="skuList"></datalist>
+    <input id="eL" placeholder="LPN"><input type="date" id="eVen">
+    <button class="btn" style="background:#3498db" onclick="guardar()">Guardar</button>
+    <button class="btn" style="background:#95a5a6" onclick="document.getElementById('modal').style.display='none'">Cancelar</button>
+</div>
 
-    <script>
-        const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; 
-        let data = [];
+<script>
+    const URL = "https://script.google.com/macros/s/AKfycbxqJXfTanClcNpM9zCgsuL2AKQKmBa5QXIILNyVySVLzM9s2DFBnqtcc9xuD7IKhoen/exec"; //
+    let data = [];
+    
+    async function sync() {
+        let res = await fetch(URL);
+        let json = await res.json();
+        data = json.inventario;
+        let list = document.getElementById('skuList'); list.innerHTML = '';
+        json.skus.forEach(s => { let o = document.createElement('option'); o.value = s; list.appendChild(o); });
+        document.getElementById('resumen').innerText = `Items registrados: ${data.length > 1 ? data.length - 1 : 0}`;
+        render(data);
+    }
 
-        async function sync() {
-            let res = await fetch(URL);
-            let json = await res.json();
-            data = json.inventario;
-            document.getElementById('resumen').innerText = `Items: ${data.length-1}`;
-            render();
-        }
+    function render(items) {
+        let g = document.getElementById('grid'); g.innerHTML = '';
+        items.forEach((r, i) => {
+            if(i > 0 && r[4]) {
+                g.innerHTML += `<div class="card" onclick="edit(${i})">
+                    <strong>LPN: ${r[4]}</strong><br>SKU: ${r[3]}<br>Ubicación: <b>${r[6] || "N/A"}</b>
+                </div>`;
+            }
+        });
+    }
 
-        function render() {
-            let g = document.getElementById('grid'); g.innerHTML = '';
-            data.slice(1).forEach((r, i) => {
-                if(r[4]) g.innerHTML += `<div class="card"><strong>LPN: ${r[4]}</strong><br>SKU: ${r[3]}<br>Ubicación: ${r[6]}</div>`;
-            });
-        }
+    function filtrar() {
+        let q = document.getElementById('busqueda').value.toLowerCase();
+        let filtrados = data.filter((r, i) => i == 0 || (r[3] && r[3].toString().toLowerCase().includes(q)) || (r[4] && r[4].toString().toLowerCase().includes(q)));
+        render(filtrados);
+    }
 
-        function startScanner(modo) {
-            document.getElementById('reader').style.display = 'block';
-            const html5Qrcode = new Html5Qrcode("reader");
-            html5Qrcode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
-                async (t) => {
-                    html5Qrcode.stop(); document.getElementById('reader').style.display = 'none';
-                    if(modo === 'salida') {
-                        let idx = data.findIndex(r => r[4] == t);
-                        if(idx !== -1) {
-                            await fetch(URL, { method: 'POST', body: JSON.stringify({ accion: 'SALIDA', fila: data[idx] }) });
-                            sync();
-                        }
-                    } else {
-                        document.getElementById('eL').value = t;
-                        document.getElementById('modal').style.display = 'block';
-                    }
-                });
-        }
+    function startScanner(modo) {
+        document.getElementById('reader').style.display = 'block';
+        const h = new Html5Qrcode("reader");
+        h.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, async (t) => {
+            h.stop(); document.getElementById('reader').style.display = 'none';
+            if(modo === 'salida') {
+                let idx = data.findIndex(r => r[4] == t);
+                if(idx !== -1) { await fetch(URL, { method: 'POST', body: JSON.stringify({ accion: 'SALIDA', fila: data[idx] }) }); sync(); }
+                else alert("LPN no encontrado");
+            } else { document.getElementById('eL').value = t; document.getElementById('modal').style.display = 'block'; }
+        });
+    }
 
-        async function guardar() {
-            let fila = [document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, document.getElementById('eS').value, document.getElementById('eL').value, document.getElementById('eVen').value];
-            await fetch(URL, { method: 'POST', body: JSON.stringify({ fila: fila }) });
-            document.getElementById('modal').style.display = 'none'; sync();
-        }
-        window.onload = sync;
-    </script>
+    async function guardar() {
+        let fila = [document.getElementById('eR').value, document.getElementById('eP').value, document.getElementById('eN').value, document.getElementById('eS').value, document.getElementById('eL').value, document.getElementById('eVen').value];
+        await fetch(URL, { method: 'POST', body: JSON.stringify({ fila: fila }) });
+        document.getElementById('modal').style.display = 'none'; sync();
+    }
+
+    function edit(i) {
+        document.getElementById('idx').value = i;
+        document.getElementById('eR').value = data[i][0] || ""; document.getElementById('eP').value = data[i][1] || "";
+        document.getElementById('eN').value = data[i][2] || ""; document.getElementById('eS').value = data[i][3] || "";
+        document.getElementById('eL').value = data[i][4] || ""; document.getElementById('eVen').value = data[i][5] ? new Date(data[i][5]).toISOString().split('T')[0] : "";
+        document.getElementById('modal').style.display = 'block';
+    }
+    window.onload = sync;
+</script>
 </body>
 </html>
